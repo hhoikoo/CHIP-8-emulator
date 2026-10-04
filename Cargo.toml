@@ -1,0 +1,10 @@
+[package]
+name = "chip8-emulator"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+
+[dev-dependencies]
+husky-rs = "0.4.0"

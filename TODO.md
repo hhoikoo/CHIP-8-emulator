@@ -1,0 +1,101 @@
+# TODO
+
+## Emulator
+
+- [ ] Single-step API
+  - Add `Cpu::step()` to run one instruction
+  - Make `run()` call `step()` in a loop
+  - Lets us test one instruction at a time
+  - Gives us a place for a cycle limit, so a jump loop can't hang forever
+- [ ] Program start location
+  - `pc` starts at `0`, but real CHIP-8 programs start at `0x200`
+  - The first 512 bytes are reserved (font sprites live there)
+  - Pick a start address and make it a constant
+- [ ] Type-safe registers
+  - Add a `Register` enum with 16 variants, `V0` to `VF`
+  - Convert a nibble to a `Register` with a function that can't fail
+  - `get_register_value` takes a `Register` and returns a plain `u8`
+  - `Instruction` fields become `Register`, so a bad index won't compile
+- [ ] Load a ROM from a file
+  - Pick a file format: raw bytes at the start address, or our own segment format
+  - Parse the file into segments
+  - Add `Rom::from_segments`
+  - Take the file path on the command line
+- [ ] More opcodes
+  - The original CHIP-8 has 34 opcodes (plus `0NNN`, which modern interpreters ignore). 5 are done.
+  - Flow
+    - [x] `00EE` return
+    - [ ] `1NNN` jump to `NNN`
+    - [x] `2NNN` call `NNN`
+    - [ ] `BNNN` jump to `NNN + V0`
+  - Skips
+    - [ ] `3XNN` skip next if `VX == NN`
+    - [ ] `4XNN` skip next if `VX != NN`
+    - [ ] `5XY0` skip next if `VX == VY`
+    - [ ] `9XY0` skip next if `VX != VY`
+  - Registers
+    - [x] `6XNN` `VX = NN`
+    - [x] `7XNN` `VX += NN`
+    - [ ] `8XY0` `VX = VY`
+    - [ ] `8XY1` `VX |= VY`
+    - [ ] `8XY2` `VX &= VY`
+    - [ ] `8XY3` `VX ^= VY`
+    - [x] `8XY4` `VX += VY`, carry in `VF`
+    - [ ] `8XY5` `VX -= VY`, `VF` set if no borrow
+    - [ ] `8XY6` shift `VX` right, bit shifted out goes to `VF`
+    - [ ] `8XY7` `VX = VY - VX`, `VF` set if no borrow
+    - [ ] `8XYE` shift `VX` left, bit shifted out goes to `VF`
+    - [ ] `CXNN` `VX` = random byte `& NN` (needs a random number source)
+  - Index register `I` and memory (needs the `I` register)
+    - [ ] `ANNN` `I = NNN`
+    - [ ] `FX1E` `I += VX`
+    - [ ] `FX29` `I` = address of the font sprite for digit `VX` (needs the font in memory)
+    - [ ] `FX33` store `VX` as 3 decimal digits at `I`, `I+1`, `I+2`
+    - [ ] `FX55` store `V0` to `VX` in memory starting at `I`
+    - [ ] `FX65` load `V0` to `VX` from memory starting at `I`
+  - Timers (needs a delay timer and a sound timer)
+    - [ ] `FX07` `VX` = delay timer
+    - [ ] `FX15` delay timer = `VX`
+    - [ ] `FX18` sound timer = `VX`
+  - Display (needs a screen buffer)
+    - [ ] `00E0` clear the screen
+    - [ ] `DXYN` draw an `N`-byte sprite from `I` at `(VX, VY)`, `VF` = collision
+  - Keypad (needs key input)
+    - [ ] `EX9E` skip next if key `VX` is pressed
+    - [ ] `EXA1` skip next if key `VX` is not pressed
+    - [ ] `FX0A` wait for a key press, store it in `VX`
+  - Decide how to handle the quirks that differ between interpreters (`8XY6`/`8XYE` shifting `VX` or `VY`, `FX55`/`FX65` changing `I`, `BNNN` using `V0` or `VX`)
+
+## Display
+
+- [ ] Display support
+  - Goal: get games like Pong running
+  - Show the screen buffer in a window or the terminal (pick a library)
+  - Read the keyboard and map it to the 16-key keypad
+  - Run the CPU at a steady speed
+  - Tick the delay and sound timers at 60 Hz
+  - Beep while the sound timer is above zero (optional)
+  - Test with a real Pong ROM
+
+## Assembler
+
+- [ ] Assembler
+  - [ ] Convert to a multi-crate Cargo workspace
+    - `core` crate: `Instruction`, `Register`, opcode constants, decode and encode
+      - Add a round-trip test over all 65,536 opcodes
+      - Encode lives next to decode because the assembler needs it
+    - `emulator` crate: `Cpu`, `Rom`, command line (lib + bin)
+    - `assembler` crate
+    - Turn the sample programs (`op.rs`, `example_fn.rs`) into test fixtures or examples
+  - [ ] Design the assembly syntax
+    - Mnemonics, comments, number formats, labels
+    - A way to place code at an address
+  - [ ] Parse text into `Instruction`s, with errors that point at the line
+  - [ ] Resolve labels to addresses
+  - [ ] Encode to opcodes using `core`
+  - [ ] Output something the emulator can load
+    - Ties into "Load a ROM from a file" above
+  - [ ] Command line: assemble a source file into an output file
+  - [ ] Disassembler / `Display` for `Instruction`
+    - Lives with the assembler so the syntax and the printer stay in sync
+  - [ ] Tests: assemble a program, run it in the emulator, check the result

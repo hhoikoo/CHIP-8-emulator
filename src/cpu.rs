@@ -9,6 +9,13 @@ pub struct Cpu {
     memory: [u8; Cpu::MEMORY_SIZE],
     stack: [u16; Cpu::STACK_SIZE],
     stack_ptr: usize,
+    state: CpuState,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CpuState {
+    Running,
+    Halt,
 }
 
 #[derive(Debug)]
@@ -28,6 +35,9 @@ pub enum CpuError {
     StackUnderflow {
         pc: usize,
     },
+    CycleLimitReached {
+        pc: usize,
+    },
 }
 
 impl Cpu {
@@ -45,6 +55,7 @@ impl Cpu {
             memory,
             stack: [0; Cpu::STACK_SIZE],
             stack_ptr: 0,
+            state: CpuState::Running,
         }
     }
 
@@ -54,24 +65,47 @@ impl Cpu {
 
     pub fn run(&mut self) -> Result<(), CpuError> {
         loop {
-            let opcode = self.read_opcode()?;
-            let instruction =
-                Instruction::try_from(opcode).map_err(|err| CpuError::UnknownOpcode {
-                    opcode: err.opcode,
-                    pc: self.pc,
-                })?;
-
-            self.pc += 2;
-
-            match instruction {
-                Instruction::Halt => return Ok(()),
-                Instruction::Return => self.ret()?,
-                Instruction::Call { addr } => self.call(addr)?,
-                Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
-                Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
-                Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
+            self.step()?;
+            if self.state == CpuState::Halt {
+                return Ok(());
             }
         }
+    }
+
+    // TODO: remove once the display loop calls run_for
+    #[cfg_attr(not(test), expect(dead_code))]
+    pub fn run_for(&mut self, cycle_limit: usize) -> Result<(), CpuError> {
+        for _ in 0..cycle_limit {
+            self.step()?;
+            if self.state == CpuState::Halt {
+                return Ok(());
+            }
+        }
+        Err(CpuError::CycleLimitReached { pc: self.pc })
+    }
+
+    pub fn step(&mut self) -> Result<(), CpuError> {
+        if self.state == CpuState::Halt {
+            return Ok(());
+        }
+
+        let opcode = self.read_opcode()?;
+        let instruction = Instruction::try_from(opcode).map_err(|err| CpuError::UnknownOpcode {
+            opcode: err.opcode,
+            pc: self.pc,
+        })?;
+
+        self.pc += 2;
+
+        match instruction {
+            Instruction::Halt => self.state = CpuState::Halt,
+            Instruction::Return => self.ret()?,
+            Instruction::Call { addr } => self.call(addr)?,
+            Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
+            Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
+            Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
+        }
+        Ok(())
     }
 
     fn read_opcode(&self) -> Result<u16, CpuError> {
@@ -142,6 +176,9 @@ impl Display for CpuError {
                 "Stack overflow: CALL {addr:#06x} at pc {pc:#06x}\ncall stack (oldest first): {stack:#06x?}"
             ),
             CpuError::StackUnderflow { pc } => write!(f, "Stack underflow at pc {pc:#06x}"),
+            CpuError::CycleLimitReached { pc } => {
+                write!(f, "Cycle limit reached before halting, at pc {pc:#06x}")
+            }
         }
     }
 }
@@ -157,6 +194,9 @@ mod tests {
 
     use super::*;
 
+    /// Generous limit so a broken test fails instead of hanging.
+    const LIMIT: usize = 10_000;
+
     fn cpu(segs: &[(usize, &[u16])]) -> Cpu {
         Cpu::new(&Rom::new(segs).unwrap())
     }
@@ -170,14 +210,14 @@ mod tests {
     #[test]
     fn execution_starts_at_address_zero() {
         let mut c = cpu(&[(0, &[0x6007, OP_HALT])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(7));
     }
 
     #[test]
     fn halt_stops_before_later_instructions() {
         let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(0));
     }
 
@@ -185,28 +225,28 @@ mod tests {
     fn code_in_the_last_memory_slot_runs() {
         // CALL the function at 0xFFE, whose RET is the final opcode in memory
         let mut c = cpu(&[(0, &[0x2FFE, 0x6001, OP_HALT]), (0xFFE, &[OP_RETURN])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(1));
     }
 
     #[test]
     fn load_and_add_immediate() {
         let mut c = cpu(&[(0, &[0x6005, 0x7003, OP_HALT])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(8));
     }
 
     #[test]
     fn add_immediate_wraps() {
         let mut c = cpu(&[(0, &[0x60FF, 0x7002, OP_HALT])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(1));
     }
 
     #[test]
     fn add_with_carry_sets_vf() {
         let mut c = cpu(&[(0, &[0x60F0, 0x6120, 0x8014, OP_HALT])]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(0x10));
         assert_eq!(c.get_register_value(0xF), Some(1));
     }
@@ -215,7 +255,7 @@ mod tests {
     fn the_real_main_program_via_two_segments() {
         let main = [0x6005, 0x610A, 0x2100, 0x2100, OP_HALT];
         let mut c = cpu(&[(0, &main), (0x100, &FN_ADD_TWICE)]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(45));
     }
 
@@ -223,12 +263,12 @@ mod tests {
     fn segment_order_in_literal_does_not_matter() {
         let main = [0x6005, 0x610A, 0x2100, 0x2100, OP_HALT];
         let mut c = cpu(&[(0x100, &FN_ADD_TWICE), (0, &main)]);
-        c.run().unwrap();
+        c.run_for(LIMIT).unwrap();
         assert_eq!(c.get_register_value(0), Some(45));
     }
 
     fn run_err(segs: &[(usize, &[u16])]) -> CpuError {
-        cpu(segs).run().unwrap_err()
+        cpu(segs).run_for(LIMIT).unwrap_err()
     }
 
     #[test]
@@ -268,7 +308,7 @@ mod tests {
         );
         segs.push((depth * 0x10, &last));
 
-        cpu(&segs).run()
+        cpu(&segs).run_for(LIMIT)
     }
 
     #[test]
@@ -327,5 +367,177 @@ mod tests {
                 .to_string()
                 .starts_with("Stack overflow: CALL 0x0000 at pc 0x0002")
         );
+        assert_eq!(
+            cpu(&[(0, &[0x6001])]).run_for(0).unwrap_err().to_string(),
+            "Cycle limit reached before halting, at pc 0x0000"
+        );
+    }
+
+    // ---- step() ----
+
+    #[test]
+    fn new_cpu_is_running() {
+        let c = cpu(&[(0, &[OP_HALT])]);
+        assert_eq!(c.state, CpuState::Running);
+    }
+
+    #[test]
+    fn step_runs_exactly_one_instruction() {
+        let mut c = cpu(&[(0, &[0x6005, 0x7003, OP_HALT])]);
+
+        c.step().unwrap();
+        assert_eq!(c.get_register_value(0), Some(5));
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.state, CpuState::Running);
+
+        c.step().unwrap();
+        assert_eq!(c.get_register_value(0), Some(8));
+        assert_eq!(c.pc, 4);
+        assert_eq!(c.state, CpuState::Running);
+    }
+
+    #[test]
+    fn step_on_halt_sets_halt_state() {
+        let mut c = cpu(&[(0, &[OP_HALT])]);
+        c.step().unwrap();
+        assert_eq!(c.state, CpuState::Halt);
+    }
+
+    #[test]
+    fn step_after_halt_stays_halted() {
+        // the load after HALT must never run
+        let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
+        c.step().unwrap();
+        let pc_at_halt = c.pc;
+
+        for _ in 0..3 {
+            c.step().unwrap();
+            assert_eq!(c.state, CpuState::Halt);
+            assert_eq!(c.pc, pc_at_halt);
+            assert_eq!(c.get_register_value(0), Some(0));
+        }
+    }
+
+    #[test]
+    fn step_through_call_and_return() {
+        let mut c = cpu(&[(0, &[0x2100, OP_HALT]), (0x100, &[OP_RETURN])]);
+
+        c.step().unwrap();
+        assert_eq!(c.pc, 0x100);
+        assert_eq!(c.stack_ptr, 1);
+
+        c.step().unwrap();
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.stack_ptr, 0);
+
+        c.step().unwrap();
+        assert_eq!(c.state, CpuState::Halt);
+    }
+
+    #[test]
+    fn step_returns_errors() {
+        let mut c = cpu(&[(0, &[OP_RETURN])]);
+        assert!(matches!(c.step(), Err(CpuError::StackUnderflow { pc: 2 })));
+        assert_eq!(c.state, CpuState::Running);
+    }
+
+    #[test]
+    fn stepping_matches_run() {
+        let main = [0x6005, 0x610A, 0x2100, 0x2100, OP_HALT];
+        let segs: &[(usize, &[u16])] = &[(0, &main), (0x100, &FN_ADD_TWICE)];
+
+        let mut stepped = cpu(segs);
+        let mut steps = 0;
+        while stepped.state != CpuState::Halt {
+            stepped.step().unwrap();
+            steps += 1;
+        }
+        // 2 loads + 2 * (call + 2 adds + return) + halt
+        assert_eq!(steps, 11);
+
+        let mut ran = cpu(segs);
+        ran.run().unwrap();
+        assert_eq!(stepped.registers, ran.registers);
+        assert_eq!(stepped.pc, ran.pc);
+    }
+
+    // ---- run() and run_for() ----
+
+    /// Three instructions, then HALT: 4 cycles in total.
+    const COUNT_TO_THREE: [u16; 4] = [0x7001, 0x7001, 0x7001, OP_HALT];
+
+    #[test]
+    fn run_goes_until_halt() {
+        let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
+        c.run().unwrap();
+        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.state, CpuState::Halt);
+    }
+
+    #[test]
+    fn run_returns_errors() {
+        let mut c = cpu(&[(0, &[0x6001, OP_RETURN])]);
+        assert!(matches!(c.run(), Err(CpuError::StackUnderflow { pc: 4 })));
+    }
+
+    #[test]
+    fn run_on_a_halted_cpu_does_nothing() {
+        let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
+        c.run().unwrap();
+        c.run().unwrap();
+        assert_eq!(c.get_register_value(0), Some(0));
+    }
+
+    #[test]
+    fn halt_on_the_last_allowed_cycle_is_ok() {
+        let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
+        c.run_for(4).unwrap();
+        assert_eq!(c.get_register_value(0), Some(3));
+    }
+
+    #[test]
+    fn one_cycle_short_of_halt_is_limit_reached() {
+        let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
+        // pc points at the HALT that didn't get to run
+        assert!(matches!(
+            c.run_for(3),
+            Err(CpuError::CycleLimitReached { pc: 6 })
+        ));
+        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.state, CpuState::Running);
+    }
+
+    #[test]
+    fn zero_cycle_limit_runs_nothing() {
+        let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
+        assert!(matches!(
+            c.run_for(0),
+            Err(CpuError::CycleLimitReached { pc: 0 })
+        ));
+        assert_eq!(c.get_register_value(0), Some(0));
+    }
+
+    #[test]
+    fn run_for_resumes_after_hitting_the_limit() {
+        let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
+        assert!(c.run_for(2).is_err());
+        assert_eq!(c.get_register_value(0), Some(2));
+        c.run_for(2).unwrap();
+        assert_eq!(c.get_register_value(0), Some(3));
+    }
+
+    #[test]
+    fn run_for_on_a_halted_cpu_is_ok() {
+        let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
+        c.run().unwrap();
+        c.run_for(5).unwrap();
+        assert_eq!(c.get_register_value(0), Some(0));
+    }
+
+    #[test]
+    fn errors_win_over_the_cycle_limit() {
+        // the error happens on the last allowed cycle
+        let mut c = cpu(&[(0, &[0x6001, OP_RETURN])]);
+        assert!(matches!(c.run_for(2), Err(CpuError::StackUnderflow { .. })));
     }
 }

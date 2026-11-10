@@ -2,7 +2,7 @@
 
 ## Emulator
 
-- [ ] Single-step API
+- [x] Single-step API
   - Add `Cpu::step()` to run one instruction
   - Make `run()` call `step()` in a loop
   - Lets us test one instruction at a time

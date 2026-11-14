@@ -1,5 +1,8 @@
-use core::fmt;
-use std::{ops::Range, write};
+mod error;
+
+pub use error::LoadError;
+
+use std::ops::Range;
 
 use crate::constant::MEMORY_SIZE;
 
@@ -12,18 +15,6 @@ pub struct Rom {
 struct Segment {
     start: usize,
     bytes: Vec<u8>,
-}
-
-#[derive(Debug)]
-pub enum LoadError {
-    OutOfBounds {
-        addr: usize,
-        byte_len: usize,
-    },
-    Overlap {
-        first_start: usize,
-        second_start: usize,
-    },
 }
 
 impl Rom {
@@ -92,26 +83,6 @@ impl Segment {
         self.start..self.end()
     }
 }
-
-impl fmt::Display for LoadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LoadError::OutOfBounds { addr, byte_len } => write!(
-                f,
-                "Segment at {addr:#06x} ({byte_len} bytes) doesn't fit in memory"
-            ),
-            LoadError::Overlap {
-                first_start,
-                second_start,
-            } => write!(
-                f,
-                "Segments at {first_start:#06x} and {second_start:#06x} overlap"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for LoadError {}
 
 #[cfg(test)]
 mod tests {

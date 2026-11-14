@@ -1,9 +1,8 @@
-use std::{
-    error::Error,
-    fmt::Display,
-    ops::{Index, IndexMut},
-    write,
-};
+mod error;
+
+pub use error::RegisterOutOfRange;
+
+use std::ops::{Index, IndexMut};
 
 pub const NUM_REGISTERS: usize = 16;
 
@@ -26,11 +25,6 @@ pub enum Register {
     VD = 0xD,
     VE = 0xE,
     VF = 0xF,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct RegisterOutOfRange {
-    pub value: u8,
 }
 
 impl TryFrom<u8> for Register {
@@ -58,18 +52,6 @@ impl TryFrom<u8> for Register {
         }
     }
 }
-
-impl Display for RegisterOutOfRange {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Register number {value:#04x} is out of range (expected 0x0 to 0xF)",
-            value = self.value
-        )
-    }
-}
-
-impl Error for RegisterOutOfRange {}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Registers([u8; NUM_REGISTERS]);

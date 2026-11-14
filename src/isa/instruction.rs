@@ -1,4 +1,6 @@
-use std::{error::Error, fmt::Display, write};
+mod error;
+
+pub use error::UnknownOpcodeError;
 
 use crate::isa::register::Register;
 
@@ -10,11 +12,6 @@ pub enum Instruction {
     LoadImmediate { x: Register, nn: u8 },     // 0x6xnn
     AddImmediate { x: Register, nn: u8 },      // 0x7xnn
     AddWithCarry { x: Register, y: Register }, // 0x8xy4
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct UnknownOpcodeError {
-    pub opcode: u16,
 }
 
 impl TryFrom<u16> for Instruction {
@@ -66,18 +63,6 @@ impl Instruction {
         (opcode & 0x00FF) as u8
     }
 }
-
-impl Display for UnknownOpcodeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Opcode {opcode:#06x} is not recognized or is not supported yet",
-            opcode = self.opcode
-        )
-    }
-}
-
-impl Error for UnknownOpcodeError {}
 
 #[cfg(test)]
 mod tests {

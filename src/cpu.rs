@@ -5,8 +5,10 @@ pub use error::CpuError;
 
 use crate::{
     constant::MEMORY_SIZE,
-    instruction::Instruction,
-    register::{Register, Registers},
+    isa::{
+        instruction::Instruction,
+        register::{Register, Registers},
+    },
     rom::Rom,
 };
 

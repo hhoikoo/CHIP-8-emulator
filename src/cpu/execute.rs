@@ -1,5 +1,5 @@
 use super::{Cpu, CpuError, CpuState};
-use crate::{instruction::Instruction, register::Register};
+use crate::isa::{instruction::Instruction, register::Register};
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {

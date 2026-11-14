@@ -1,5 +1,5 @@
 use chip8_emulator::{
-    cpu::Cpu, example_fn::FN_ADD_TWICE, op::OP_HALT, register::Register, rom::Rom,
+    cpu::Cpu, example_fn::FN_ADD_TWICE, isa::register::Register, op::OP_HALT, rom::Rom,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

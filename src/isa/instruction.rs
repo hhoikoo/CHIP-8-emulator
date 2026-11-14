@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display, write};
 
-use crate::register::Register;
+use crate::isa::register::Register;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {

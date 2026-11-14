@@ -28,16 +28,16 @@ impl TryFrom<u16> for Instruction {
                 addr: Self::get_addr(opcode),
             }),
             (0x6, x, _, _) => Ok(Self::LoadImmediate {
-                x: Register::from(x),
+                x: Self::register(x),
                 nn: Self::get_nn(opcode),
             }),
             (0x7, x, _, _) => Ok(Self::AddImmediate {
-                x: Register::from(x),
+                x: Self::register(x),
                 nn: Self::get_nn(opcode),
             }),
             (0x8, x, y, 0x4) => Ok(Self::AddWithCarry {
-                x: Register::from(x),
-                y: Register::from(y),
+                x: Self::register(x),
+                y: Self::register(y),
             }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
@@ -52,6 +52,10 @@ impl Instruction {
         let d = (opcode & 0x000F) as u8;
 
         (c, x, y, d)
+    }
+
+    fn register(nibble: u8) -> Register {
+        Register::try_from(nibble).expect("a 4-bit field always names a register")
     }
 
     fn get_addr(opcode: u16) -> u16 {
@@ -160,8 +164,8 @@ mod tests {
     fn exhaustive_decode_matches_the_opcode_bits() {
         let mut decoded = 0;
         for opcode in 0..=u16::MAX {
-            let x = Register::from((opcode >> 8) as u8);
-            let y = Register::from((opcode >> 4) as u8);
+            let x = Register::try_from(((opcode >> 8) & 0xF) as u8).unwrap();
+            let y = Register::try_from(((opcode >> 4) & 0xF) as u8).unwrap();
             let nn = (opcode & 0xFF) as u8;
             let addr = opcode & 0x0FFF;
 

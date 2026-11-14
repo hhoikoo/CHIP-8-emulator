@@ -1,4 +1,9 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    error::Error,
+    fmt::Display,
+    ops::{Index, IndexMut},
+    write,
+};
 
 pub const NUM_REGISTERS: usize = 16;
 
@@ -23,29 +28,48 @@ pub enum Register {
     VF = 0xF,
 }
 
-impl From<u8> for Register {
-    fn from(value: u8) -> Self {
-        match value & 0xF {
-            0x0 => Register::V0,
-            0x1 => Register::V1,
-            0x2 => Register::V2,
-            0x3 => Register::V3,
-            0x4 => Register::V4,
-            0x5 => Register::V5,
-            0x6 => Register::V6,
-            0x7 => Register::V7,
-            0x8 => Register::V8,
-            0x9 => Register::V9,
-            0xA => Register::VA,
-            0xB => Register::VB,
-            0xC => Register::VC,
-            0xD => Register::VD,
-            0xE => Register::VE,
-            0xF => Register::VF,
-            _ => unreachable!(),
+#[derive(Debug, PartialEq, Eq)]
+pub struct RegisterOutOfRange {
+    pub value: u8,
+}
+
+impl TryFrom<u8> for Register {
+    type Error = RegisterOutOfRange;
+
+    fn try_from(value: u8) -> Result<Self, RegisterOutOfRange> {
+        match value {
+            0x0 => Ok(Register::V0),
+            0x1 => Ok(Register::V1),
+            0x2 => Ok(Register::V2),
+            0x3 => Ok(Register::V3),
+            0x4 => Ok(Register::V4),
+            0x5 => Ok(Register::V5),
+            0x6 => Ok(Register::V6),
+            0x7 => Ok(Register::V7),
+            0x8 => Ok(Register::V8),
+            0x9 => Ok(Register::V9),
+            0xA => Ok(Register::VA),
+            0xB => Ok(Register::VB),
+            0xC => Ok(Register::VC),
+            0xD => Ok(Register::VD),
+            0xE => Ok(Register::VE),
+            0xF => Ok(Register::VF),
+            _ => Err(RegisterOutOfRange { value }),
         }
     }
 }
+
+impl Display for RegisterOutOfRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Register number {value:#04x} is out of range (expected 0x0 to 0xF)",
+            value = self.value
+        )
+    }
+}
+
+impl Error for RegisterOutOfRange {}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Registers([u8; NUM_REGISTERS]);
@@ -81,20 +105,29 @@ mod tests {
     }
 
     #[test]
-    fn from_u8_maps_each_nibble_to_its_register() {
+    fn try_from_u8_maps_each_number_to_its_register() {
         for (n, r) in IN_ORDER.into_iter().enumerate() {
-            assert_eq!(Register::from(n as u8), r);
+            assert_eq!(Register::try_from(n as u8), Ok(r));
         }
     }
 
     #[test]
-    fn from_u8_ignores_the_high_nibble() {
-        assert_eq!(Register::from(0x1A), VA);
-        assert_eq!(Register::from(0xF0), V0);
-        assert_eq!(Register::from(0xFF), VF);
-        for n in 0..=u8::MAX {
-            assert_eq!(Register::from(n), Register::from(n & 0xF), "{n:#04x}");
+    fn try_from_u8_rejects_16_and_above() {
+        for value in 0x10..=u8::MAX {
+            assert_eq!(
+                Register::try_from(value),
+                Err(RegisterOutOfRange { value }),
+                "{value:#04x}"
+            );
         }
+    }
+
+    #[test]
+    fn out_of_range_error_message() {
+        assert_eq!(
+            RegisterOutOfRange { value: 0x1A }.to_string(),
+            "Register number 0x1a is out of range (expected 0x0 to 0xF)"
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@
   - `pc` starts at `0`, but real CHIP-8 programs start at `0x200`
   - The first 512 bytes are reserved (font sprites live there)
   - Pick a start address and make it a constant
-- [ ] Type-safe registers
+- [x] Type-safe registers
   - Add a `Register` enum with 16 variants, `V0` to `VF`
   - Convert a nibble to a `Register` with a function that can't fail
   - `get_register_value` takes a `Register` and returns a plain `u8`

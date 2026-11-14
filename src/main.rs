@@ -1,12 +1,14 @@
+mod constant;
 mod cpu;
 mod example_fn;
 mod instruction;
 mod op;
+mod register;
 mod rom;
 
 use std::{assert_eq, println};
 
-use crate::{cpu::Cpu, example_fn::FN_ADD_TWICE, op::OP_HALT, rom::Rom};
+use crate::{cpu::Cpu, example_fn::FN_ADD_TWICE, op::OP_HALT, register::Register, rom::Rom};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fn_main = [
@@ -24,9 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     cpu.run()?;
 
-    let register_0 = cpu.get_register_value(0);
-    assert_eq!(register_0, Some(45));
-    println!("5 + (2 * 10) + (2 * 10) = {}", register_0.unwrap());
+    let register_0 = cpu.get_register_value(Register::V0);
+    assert_eq!(register_0, 45);
+    println!("5 + (2 * 10) + (2 * 10) = {}", register_0);
 
     Ok(())
 }

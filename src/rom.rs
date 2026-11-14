@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{ops::Range, write};
 
-use crate::cpu::Cpu;
+use crate::constant::MEMORY_SIZE;
 
 #[derive(Debug)]
 pub struct Rom {
@@ -40,7 +40,7 @@ impl Rom {
         Ok(Self { segments })
     }
 
-    pub fn load_into_memory(&self, memory: &mut [u8; Cpu::MEMORY_SIZE]) {
+    pub fn load_into_memory(&self, memory: &mut [u8; MEMORY_SIZE]) {
         for segment in self.segments.iter() {
             memory[segment.range()].copy_from_slice(&segment.bytes);
         }
@@ -75,7 +75,7 @@ impl Segment {
 
         start
             .checked_add(bytes.len())
-            .filter(|&end| end <= Cpu::MEMORY_SIZE)
+            .filter(|&end| end <= MEMORY_SIZE)
             .ok_or(LoadError::OutOfBounds {
                 addr: start,
                 byte_len: bytes.len(),
@@ -123,8 +123,8 @@ mod tests {
         Rom::new(s)
     }
 
-    fn loaded(s: &[(usize, &[u16])]) -> [u8; Cpu::MEMORY_SIZE] {
-        let mut mem = [0u8; Cpu::MEMORY_SIZE];
+    fn loaded(s: &[(usize, &[u16])]) -> [u8; MEMORY_SIZE] {
+        let mut mem = [0u8; MEMORY_SIZE];
         build(s).unwrap().load_into_memory(&mut mem);
         mem
     }
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn empty_rom_loads_nothing() {
-        assert_eq!(loaded(&[]), [0u8; Cpu::MEMORY_SIZE]);
+        assert_eq!(loaded(&[]), [0u8; MEMORY_SIZE]);
     }
 
     #[test]
@@ -212,13 +212,13 @@ mod tests {
 
     #[test]
     fn exact_fit_at_end_of_memory() {
-        assert!(build(&[(Cpu::MEMORY_SIZE - 2, &[1])]).is_ok());
+        assert!(build(&[(MEMORY_SIZE - 2, &[1])]).is_ok());
     }
 
     #[test]
     fn one_byte_past_end() {
         assert!(matches!(
-            build(&[(Cpu::MEMORY_SIZE - 1, &[1])]),
+            build(&[(MEMORY_SIZE - 1, &[1])]),
             Err(LoadError::OutOfBounds {
                 addr: 4095,
                 byte_len: 2
@@ -251,14 +251,14 @@ mod tests {
 
     #[test]
     fn last_two_bytes_of_memory() {
-        let mem = loaded(&[(Cpu::MEMORY_SIZE - 2, &[0xBEEF])]);
-        assert_eq!(&mem[Cpu::MEMORY_SIZE - 2..], &[0xBE, 0xEF]);
+        let mem = loaded(&[(MEMORY_SIZE - 2, &[0xBEEF])]);
+        assert_eq!(&mem[MEMORY_SIZE - 2..], &[0xBE, 0xEF]);
     }
 
     #[test]
     fn load_does_not_clear_existing_memory() {
         let rom = build(&[(0x10, &[0x1111])]).unwrap();
-        let mut mem = [0xEEu8; Cpu::MEMORY_SIZE];
+        let mut mem = [0xEEu8; MEMORY_SIZE];
         rom.load_into_memory(&mut mem);
         assert_eq!(&mem[0x10..0x12], &[0x11, 0x11]);
         assert_eq!(mem[0x0F], 0xEE);
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn rom_is_reusable_across_loads() {
         let rom = build(&[(0x200, &[0x1234])]).unwrap();
-        let (mut a, mut b) = ([0u8; Cpu::MEMORY_SIZE], [0u8; Cpu::MEMORY_SIZE]);
+        let (mut a, mut b) = ([0u8; MEMORY_SIZE], [0u8; MEMORY_SIZE]);
         rom.load_into_memory(&mut a);
         rom.load_into_memory(&mut b);
         assert_eq!(a, b);

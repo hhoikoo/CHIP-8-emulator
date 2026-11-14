@@ -1,13 +1,15 @@
 use std::{error::Error, fmt::Display, write};
 
+use crate::register::Register;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
-    Halt,                            // 0x0000
-    Return,                          // 0x00EE
-    Call { addr: u16 },              // 0x2nnn
-    LoadImmediate { x: u8, nn: u8 }, // 0x6xnn
-    AddImmediate { x: u8, nn: u8 },  // 0x7xnn
-    AddWithCarry { x: u8, y: u8 },   // 0x8xy4
+    Halt,                                      // 0x0000
+    Return,                                    // 0x00EE
+    Call { addr: u16 },                        // 0x2nnn
+    LoadImmediate { x: Register, nn: u8 },     // 0x6xnn
+    AddImmediate { x: Register, nn: u8 },      // 0x7xnn
+    AddWithCarry { x: Register, y: Register }, // 0x8xy4
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -26,14 +28,17 @@ impl TryFrom<u16> for Instruction {
                 addr: Self::get_addr(opcode),
             }),
             (0x6, x, _, _) => Ok(Self::LoadImmediate {
-                x,
+                x: Register::from(x),
                 nn: Self::get_nn(opcode),
             }),
             (0x7, x, _, _) => Ok(Self::AddImmediate {
-                x,
+                x: Register::from(x),
                 nn: Self::get_nn(opcode),
             }),
-            (0x8, x, y, 0x4) => Ok(Self::AddWithCarry { x, y }),
+            (0x8, x, y, 0x4) => Ok(Self::AddWithCarry {
+                x: Register::from(x),
+                y: Register::from(y),
+            }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }
@@ -74,6 +79,7 @@ impl Error for UnknownOpcodeError {}
 mod tests {
     use super::*;
     use crate::op::{OP_HALT, OP_RETURN};
+    use Register::*;
 
     fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
         Instruction::try_from(opcode)
@@ -86,13 +92,16 @@ mod tests {
         assert_eq!(decode(0x2ABC), Ok(Instruction::Call { addr: 0xABC }));
         assert_eq!(
             decode(0x6A05),
-            Ok(Instruction::LoadImmediate { x: 0xA, nn: 0x05 })
+            Ok(Instruction::LoadImmediate { x: VA, nn: 0x05 })
         );
         assert_eq!(
             decode(0x7B7F),
-            Ok(Instruction::AddImmediate { x: 0xB, nn: 0x7F })
+            Ok(Instruction::AddImmediate { x: VB, nn: 0x7F })
         );
-        assert_eq!(decode(0x8124), Ok(Instruction::AddWithCarry { x: 1, y: 2 }));
+        assert_eq!(
+            decode(0x8124),
+            Ok(Instruction::AddWithCarry { x: V1, y: V2 })
+        );
     }
 
     #[test]
@@ -107,15 +116,15 @@ mod tests {
         assert_eq!(decode(0x2FFF), Ok(Instruction::Call { addr: 0xFFF }));
         assert_eq!(
             decode(0x6000),
-            Ok(Instruction::LoadImmediate { x: 0, nn: 0 })
+            Ok(Instruction::LoadImmediate { x: V0, nn: 0 })
         );
         assert_eq!(
             decode(0x6FFF),
-            Ok(Instruction::LoadImmediate { x: 0xF, nn: 0xFF })
+            Ok(Instruction::LoadImmediate { x: VF, nn: 0xFF })
         );
         assert_eq!(
             decode(0x8FF4),
-            Ok(Instruction::AddWithCarry { x: 0xF, y: 0xF })
+            Ok(Instruction::AddWithCarry { x: VF, y: VF })
         );
     }
 
@@ -151,8 +160,8 @@ mod tests {
     fn exhaustive_decode_matches_the_opcode_bits() {
         let mut decoded = 0;
         for opcode in 0..=u16::MAX {
-            let x = ((opcode >> 8) & 0xF) as u8;
-            let y = ((opcode >> 4) & 0xF) as u8;
+            let x = Register::from((opcode >> 8) as u8);
+            let y = Register::from((opcode >> 4) as u8);
             let nn = (opcode & 0xFF) as u8;
             let addr = opcode & 0x0FFF;
 

@@ -1,13 +1,18 @@
 use std::{error::Error, fmt::Display, write};
 
-use crate::{instruction::Instruction, rom::Rom};
+use crate::{
+    constant::{MEMORY_SIZE, STACK_SIZE},
+    instruction::Instruction,
+    register::{Register, Registers},
+    rom::Rom,
+};
 
 #[derive(Debug)]
 pub struct Cpu {
-    registers: [u8; Cpu::NUM_REGISTERS],
+    registers: Registers,
     pc: usize,
-    memory: [u8; Cpu::MEMORY_SIZE],
-    stack: [u16; Cpu::STACK_SIZE],
+    memory: [u8; MEMORY_SIZE],
+    stack: [u16; STACK_SIZE],
     stack_ptr: usize,
     state: CpuState,
 }
@@ -41,26 +46,22 @@ pub enum CpuError {
 }
 
 impl Cpu {
-    pub const NUM_REGISTERS: usize = 16;
-    pub const MEMORY_SIZE: usize = 0x1000;
-    pub const STACK_SIZE: usize = 16;
-
     pub fn new(rom: &Rom) -> Self {
-        let mut memory = [0; Cpu::MEMORY_SIZE];
+        let mut memory = [0; MEMORY_SIZE];
         rom.load_into_memory(&mut memory);
 
         Cpu {
-            registers: [0; Cpu::NUM_REGISTERS],
+            registers: Registers::default(),
             pc: 0,
             memory,
-            stack: [0; Cpu::STACK_SIZE],
+            stack: [0; STACK_SIZE],
             stack_ptr: 0,
             state: CpuState::Running,
         }
     }
 
-    pub fn get_register_value(&self, num: usize) -> Option<u8> {
-        self.registers.get(num).copied()
+    pub fn get_register_value(&self, register: Register) -> u8 {
+        self.registers[register]
     }
 
     pub fn run(&mut self) -> Result<(), CpuError> {
@@ -142,22 +143,22 @@ impl Cpu {
         Ok(())
     }
 
-    fn load_immediate(&mut self, x: u8, nn: u8) {
-        self.registers[x as usize] = nn;
+    fn load_immediate(&mut self, x: Register, nn: u8) {
+        self.registers[x] = nn;
     }
 
-    fn add_immediate(&mut self, x: u8, nn: u8) {
-        let register: &mut u8 = &mut self.registers[x as usize];
+    fn add_immediate(&mut self, x: Register, nn: u8) {
+        let register: &mut u8 = &mut self.registers[x];
         *register = register.wrapping_add(nn);
     }
 
-    fn add_with_carry(&mut self, x: u8, y: u8) {
-        let arg1 = self.registers[x as usize];
-        let arg2 = self.registers[y as usize];
+    fn add_with_carry(&mut self, x: Register, y: Register) {
+        let arg1 = self.registers[x];
+        let arg2 = self.registers[y];
 
         let (val, overflow) = arg1.overflowing_add(arg2);
-        self.registers[x as usize] = val;
-        self.registers[0xF] = u8::from(overflow);
+        self.registers[x] = val;
+        self.registers[Register::VF] = u8::from(overflow);
     }
 }
 
@@ -193,6 +194,7 @@ mod tests {
     };
 
     use super::*;
+    use Register::*;
 
     /// Generous limit so a broken test fails instead of hanging.
     const LIMIT: usize = 10_000;
@@ -204,21 +206,21 @@ mod tests {
     #[test]
     fn new_cpu_has_zeroed_registers() {
         let c = cpu(&[(0, &[OP_HALT])]);
-        assert!((0..Cpu::NUM_REGISTERS).all(|r| c.get_register_value(r) == Some(0)));
+        assert_eq!(c.registers, Registers::default());
     }
 
     #[test]
     fn execution_starts_at_address_zero() {
         let mut c = cpu(&[(0, &[0x6007, OP_HALT])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(7));
+        assert_eq!(c.get_register_value(V0), 7);
     }
 
     #[test]
     fn halt_stops_before_later_instructions() {
         let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(0));
+        assert_eq!(c.get_register_value(V0), 0);
     }
 
     #[test]
@@ -226,29 +228,56 @@ mod tests {
         // CALL the function at 0xFFE, whose RET is the final opcode in memory
         let mut c = cpu(&[(0, &[0x2FFE, 0x6001, OP_HALT]), (0xFFE, &[OP_RETURN])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(1));
+        assert_eq!(c.get_register_value(V0), 1);
     }
 
     #[test]
     fn load_and_add_immediate() {
         let mut c = cpu(&[(0, &[0x6005, 0x7003, OP_HALT])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(8));
+        assert_eq!(c.get_register_value(V0), 8);
     }
 
     #[test]
     fn add_immediate_wraps() {
         let mut c = cpu(&[(0, &[0x60FF, 0x7002, OP_HALT])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(1));
+        assert_eq!(c.get_register_value(V0), 1);
     }
 
     #[test]
     fn add_with_carry_sets_vf() {
         let mut c = cpu(&[(0, &[0x60F0, 0x6120, 0x8014, OP_HALT])]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(0x10));
-        assert_eq!(c.get_register_value(0xF), Some(1));
+        assert_eq!(c.get_register_value(V0), 0x10);
+        assert_eq!(c.get_register_value(VF), 1);
+    }
+
+    #[test]
+    fn add_with_carry_uses_the_named_registers() {
+        // VA += VB; V0 and V1 must stay untouched
+        let mut c = cpu(&[(0, &[0x6A03, 0x6B04, 0x8AB4, OP_HALT])]);
+        c.run_for(LIMIT).unwrap();
+        assert_eq!(c.get_register_value(VA), 7);
+        assert_eq!(c.get_register_value(VB), 4);
+        assert_eq!(c.get_register_value(V0), 0);
+        assert_eq!(c.get_register_value(VF), 0);
+    }
+
+    #[test]
+    fn add_with_carry_into_vf_keeps_the_flag() {
+        // VF += V0 overflows: the carry flag overwrites the sum
+        let mut c = cpu(&[(0, &[0x6FFF, 0x6002, 0x8F04, OP_HALT])]);
+        c.run_for(LIMIT).unwrap();
+        assert_eq!(c.get_register_value(VF), 1);
+    }
+
+    #[test]
+    fn add_with_carry_clears_a_stale_flag() {
+        let mut c = cpu(&[(0, &[0x6F01, 0x6001, 0x6101, 0x8014, OP_HALT])]);
+        c.run_for(LIMIT).unwrap();
+        assert_eq!(c.get_register_value(V0), 2);
+        assert_eq!(c.get_register_value(VF), 0);
     }
 
     #[test]
@@ -256,7 +285,7 @@ mod tests {
         let main = [0x6005, 0x610A, 0x2100, 0x2100, OP_HALT];
         let mut c = cpu(&[(0, &main), (0x100, &FN_ADD_TWICE)]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(45));
+        assert_eq!(c.get_register_value(V0), 45);
     }
 
     #[test]
@@ -264,7 +293,7 @@ mod tests {
         let main = [0x6005, 0x610A, 0x2100, 0x2100, OP_HALT];
         let mut c = cpu(&[(0x100, &FN_ADD_TWICE), (0, &main)]);
         c.run_for(LIMIT).unwrap();
-        assert_eq!(c.get_register_value(0), Some(45));
+        assert_eq!(c.get_register_value(V0), 45);
     }
 
     fn run_err(segs: &[(usize, &[u16])]) -> CpuError {
@@ -284,7 +313,7 @@ mod tests {
         match err {
             CpuError::StackOverflow { pc, addr, stack } => {
                 assert_eq!((pc, addr), (2, 0));
-                assert_eq!(stack, vec![2; Cpu::STACK_SIZE]);
+                assert_eq!(stack, vec![2; STACK_SIZE]);
             }
             other => panic!("expected StackOverflow, got {other:?}"),
         }
@@ -313,12 +342,12 @@ mod tests {
 
     #[test]
     fn call_depth_at_the_stack_limit_is_ok() {
-        run_nested_calls(Cpu::STACK_SIZE).unwrap();
+        run_nested_calls(STACK_SIZE).unwrap();
     }
 
     #[test]
     fn one_call_past_the_stack_limit_overflows() {
-        let err = run_nested_calls(Cpu::STACK_SIZE + 1).unwrap_err();
+        let err = run_nested_calls(STACK_SIZE + 1).unwrap_err();
         assert!(matches!(err, CpuError::StackOverflow { .. }));
     }
 
@@ -386,12 +415,12 @@ mod tests {
         let mut c = cpu(&[(0, &[0x6005, 0x7003, OP_HALT])]);
 
         c.step().unwrap();
-        assert_eq!(c.get_register_value(0), Some(5));
+        assert_eq!(c.get_register_value(V0), 5);
         assert_eq!(c.pc, 2);
         assert_eq!(c.state, CpuState::Running);
 
         c.step().unwrap();
-        assert_eq!(c.get_register_value(0), Some(8));
+        assert_eq!(c.get_register_value(V0), 8);
         assert_eq!(c.pc, 4);
         assert_eq!(c.state, CpuState::Running);
     }
@@ -414,7 +443,7 @@ mod tests {
             c.step().unwrap();
             assert_eq!(c.state, CpuState::Halt);
             assert_eq!(c.pc, pc_at_halt);
-            assert_eq!(c.get_register_value(0), Some(0));
+            assert_eq!(c.get_register_value(V0), 0);
         }
     }
 
@@ -470,7 +499,7 @@ mod tests {
     fn run_goes_until_halt() {
         let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
         c.run().unwrap();
-        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.get_register_value(V0), 3);
         assert_eq!(c.state, CpuState::Halt);
     }
 
@@ -485,14 +514,14 @@ mod tests {
         let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
         c.run().unwrap();
         c.run().unwrap();
-        assert_eq!(c.get_register_value(0), Some(0));
+        assert_eq!(c.get_register_value(V0), 0);
     }
 
     #[test]
     fn halt_on_the_last_allowed_cycle_is_ok() {
         let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
         c.run_for(4).unwrap();
-        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.get_register_value(V0), 3);
     }
 
     #[test]
@@ -503,7 +532,7 @@ mod tests {
             c.run_for(3),
             Err(CpuError::CycleLimitReached { pc: 6 })
         ));
-        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.get_register_value(V0), 3);
         assert_eq!(c.state, CpuState::Running);
     }
 
@@ -514,16 +543,16 @@ mod tests {
             c.run_for(0),
             Err(CpuError::CycleLimitReached { pc: 0 })
         ));
-        assert_eq!(c.get_register_value(0), Some(0));
+        assert_eq!(c.get_register_value(V0), 0);
     }
 
     #[test]
     fn run_for_resumes_after_hitting_the_limit() {
         let mut c = cpu(&[(0, &COUNT_TO_THREE)]);
         assert!(c.run_for(2).is_err());
-        assert_eq!(c.get_register_value(0), Some(2));
+        assert_eq!(c.get_register_value(V0), 2);
         c.run_for(2).unwrap();
-        assert_eq!(c.get_register_value(0), Some(3));
+        assert_eq!(c.get_register_value(V0), 3);
     }
 
     #[test]
@@ -531,7 +560,7 @@ mod tests {
         let mut c = cpu(&[(0, &[OP_HALT, 0x6005])]);
         c.run().unwrap();
         c.run_for(5).unwrap();
-        assert_eq!(c.get_register_value(0), Some(0));
+        assert_eq!(c.get_register_value(V0), 0);
     }
 
     #[test]

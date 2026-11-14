@@ -1,8 +1,10 @@
 use std::{error::Error, fmt::Display, write};
 
+use crate::isa::opcode::Opcode;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnknownOpcodeError {
-    pub opcode: u16,
+    pub opcode: Opcode,
 }
 
 impl Display for UnknownOpcodeError {

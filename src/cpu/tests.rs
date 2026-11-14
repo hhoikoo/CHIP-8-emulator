@@ -166,10 +166,7 @@ fn unknown_opcode_reports_its_own_address() {
     let err = run_err(&[(0, &[0x6001, 0xF000])]);
     assert!(matches!(
         err,
-        CpuError::UnknownOpcode {
-            opcode: 0xF000,
-            pc: 2
-        }
+        CpuError::UnknownOpcode { opcode, pc: 2 } if opcode == Opcode::new(0xF000)
     ));
 }
 

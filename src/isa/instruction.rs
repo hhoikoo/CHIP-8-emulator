@@ -2,7 +2,7 @@ mod error;
 
 pub use error::UnknownOpcodeError;
 
-use crate::isa::{addr::Addr, register::Register};
+use crate::isa::{addr::Addr, opcode::Opcode, register::Register};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
@@ -14,53 +14,28 @@ pub enum Instruction {
     AddWithCarry { x: Register, y: Register }, // 0x8xy4
 }
 
-impl TryFrom<u16> for Instruction {
+impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
 
-    fn try_from(opcode: u16) -> Result<Self, UnknownOpcodeError> {
-        match Instruction::extract_opcode_values(opcode) {
-            (0, 0, 0, 0) => Ok(Self::Halt),
+    fn try_from(opcode: Opcode) -> Result<Self, UnknownOpcodeError> {
+        match opcode.nibbles() {
+            (0x0, 0x0, 0x0, 0x0) => Ok(Self::Halt),
             (0x0, 0x0, 0xE, 0xE) => Ok(Self::Return),
-            (0x2, _, _, _) => Ok(Self::Call {
-                addr: Self::addr(opcode),
+            (0x2, _, _, _) => Ok(Self::Call { addr: opcode.nnn() }),
+            (0x6, _, _, _) => Ok(Self::LoadImmediate {
+                x: opcode.x(),
+                nn: opcode.nn(),
             }),
-            (0x6, x, _, _) => Ok(Self::LoadImmediate {
-                x: Self::register(x),
-                nn: Self::get_nn(opcode),
+            (0x7, _, _, _) => Ok(Self::AddImmediate {
+                x: opcode.x(),
+                nn: opcode.nn(),
             }),
-            (0x7, x, _, _) => Ok(Self::AddImmediate {
-                x: Self::register(x),
-                nn: Self::get_nn(opcode),
-            }),
-            (0x8, x, y, 0x4) => Ok(Self::AddWithCarry {
-                x: Self::register(x),
-                y: Self::register(y),
+            (0x8, _, _, 0x4) => Ok(Self::AddWithCarry {
+                x: opcode.x(),
+                y: opcode.y(),
             }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
-    }
-}
-
-impl Instruction {
-    fn extract_opcode_values(opcode: u16) -> (u8, u8, u8, u8) {
-        let c = ((opcode & 0xF000) >> 12) as u8;
-        let x = ((opcode & 0x0F00) >> 8) as u8;
-        let y = ((opcode & 0x00F0) >> 4) as u8;
-        let d = (opcode & 0x000F) as u8;
-
-        (c, x, y, d)
-    }
-
-    fn register(nibble: u8) -> Register {
-        Register::try_from(nibble).expect("a 4-bit field always names a register")
-    }
-
-    fn addr(opcode: u16) -> Addr {
-        Addr::new(opcode & 0x0FFF).expect("a 12-bit field always fits in an Addr")
-    }
-
-    fn get_nn(opcode: u16) -> u8 {
-        (opcode & 0x00FF) as u8
     }
 }
 

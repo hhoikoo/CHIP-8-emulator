@@ -1,6 +1,6 @@
 use std::{error::Error, fmt::Display, write};
 
-use crate::isa::addr::Addr;
+use crate::isa::{addr::Addr, opcode::Opcode};
 
 #[derive(Debug)]
 pub enum CpuError {
@@ -8,7 +8,7 @@ pub enum CpuError {
         pc: usize,
     },
     UnknownOpcode {
-        opcode: u16,
+        opcode: Opcode,
         pc: usize,
     },
     StackOverflow {

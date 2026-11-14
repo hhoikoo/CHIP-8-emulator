@@ -7,6 +7,7 @@ use crate::{
     constant::MEMORY_SIZE,
     isa::{
         instruction::Instruction,
+        opcode::Opcode,
         register::{Register, Registers},
     },
     rom::Rom,
@@ -84,10 +85,10 @@ impl Cpu {
         self.execute(instruction)
     }
 
-    fn read_opcode(&self) -> Result<u16, CpuError> {
+    fn read_opcode(&self) -> Result<Opcode, CpuError> {
         let pc = self.pc;
         match self.memory.get(pc..pc + 2) {
-            Some(&[high, low]) => Ok(u16::from_be_bytes([high, low])),
+            Some(&[high, low]) => Ok(Opcode::new(u16::from_be_bytes([high, low]))),
             _ => Err(CpuError::PcOutOfBounds { pc }),
         }
     }

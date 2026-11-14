@@ -3,7 +3,7 @@ use crate::op::{OP_HALT, OP_RETURN};
 use Register::*;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
-    Instruction::try_from(opcode)
+    Instruction::try_from(Opcode::new(opcode))
 }
 
 fn addr(value: u16) -> Addr {
@@ -62,7 +62,12 @@ fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
         0x8120, 0x8125, // 8xy0 / 8xy5, not implemented
         0xF000,
     ] {
-        assert_eq!(decode(opcode), Err(UnknownOpcodeError { opcode }));
+        assert_eq!(
+            decode(opcode),
+            Err(UnknownOpcodeError {
+                opcode: Opcode::new(opcode)
+            })
+        );
     }
 }
 
@@ -105,7 +110,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
                 assert_eq!(got, want, "opcode {opcode:#06x}");
                 decoded += 1;
             }
-            (Err(err), None) => assert_eq!(err.opcode, opcode),
+            (Err(err), None) => assert_eq!(err.opcode.get(), opcode),
             (got, want) => panic!("opcode {opcode:#06x}: got {got:?}, expected {want:?}"),
         }
     }
@@ -116,7 +121,10 @@ fn exhaustive_decode_matches_the_opcode_bits() {
 #[test]
 fn unknown_opcode_error_message() {
     assert_eq!(
-        UnknownOpcodeError { opcode: 0xF000 }.to_string(),
+        UnknownOpcodeError {
+            opcode: Opcode::new(0xF000)
+        }
+        .to_string(),
         "Opcode 0xf000 is not recognized or is not supported yet"
     );
 }

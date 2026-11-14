@@ -1,4 +1,7 @@
-use std::{error::Error, fmt::Display, write};
+mod error;
+mod execute;
+
+pub use error::CpuError;
 
 use crate::{
     constant::{MEMORY_SIZE, STACK_SIZE},
@@ -21,28 +24,6 @@ pub struct Cpu {
 pub enum CpuState {
     Running,
     Halt,
-}
-
-#[derive(Debug)]
-pub enum CpuError {
-    PcOutOfBounds {
-        pc: usize,
-    },
-    UnknownOpcode {
-        opcode: u16,
-        pc: usize,
-    },
-    StackOverflow {
-        pc: usize,
-        addr: u16,
-        stack: Vec<u16>,
-    },
-    StackUnderflow {
-        pc: usize,
-    },
-    CycleLimitReached {
-        pc: usize,
-    },
 }
 
 impl Cpu {
@@ -96,15 +77,7 @@ impl Cpu {
 
         self.pc += 2;
 
-        match instruction {
-            Instruction::Halt => self.state = CpuState::Halt,
-            Instruction::Return => self.ret()?,
-            Instruction::Call { addr } => self.call(addr)?,
-            Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
-            Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
-            Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
-        }
-        Ok(())
+        self.execute(instruction)
     }
 
     fn read_opcode(&self) -> Result<u16, CpuError> {
@@ -114,75 +87,7 @@ impl Cpu {
             _ => Err(CpuError::PcOutOfBounds { pc }),
         }
     }
-
-    fn ret(&mut self) -> Result<(), CpuError> {
-        match self.stack_ptr.checked_sub(1) {
-            Some(new_stack_ptr) => {
-                self.stack_ptr = new_stack_ptr;
-                self.pc = self.stack[self.stack_ptr] as usize;
-                Ok(())
-            }
-            None => Err(CpuError::StackUnderflow { pc: self.pc }),
-        }
-    }
-
-    fn call(&mut self, addr: u16) -> Result<(), CpuError> {
-        if self.stack_ptr >= self.stack.len() {
-            return Err(CpuError::StackOverflow {
-                pc: self.pc,
-                addr,
-                stack: self.stack[..self.stack_ptr].to_vec(),
-            });
-        }
-
-        self.stack[self.stack_ptr] = self.pc as u16;
-        self.stack_ptr += 1;
-        self.pc = addr as usize;
-        Ok(())
-    }
-
-    fn load_immediate(&mut self, x: Register, nn: u8) {
-        self.registers[x] = nn;
-    }
-
-    fn add_immediate(&mut self, x: Register, nn: u8) {
-        let register: &mut u8 = &mut self.registers[x];
-        *register = register.wrapping_add(nn);
-    }
-
-    fn add_with_carry(&mut self, x: Register, y: Register) {
-        let arg1 = self.registers[x];
-        let arg2 = self.registers[y];
-
-        let (val, overflow) = arg1.overflowing_add(arg2);
-        self.registers[x] = val;
-        self.registers[Register::VF] = u8::from(overflow);
-    }
 }
-
-impl Display for CpuError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CpuError::PcOutOfBounds { pc } => write!(f, "Program counter {pc:#06x} out of bounds"),
-            CpuError::UnknownOpcode { opcode, pc } => {
-                write!(
-                    f,
-                    "Opcode {opcode:#06x} at pc {pc:#06x} is unrecognized or is not supported yet"
-                )
-            }
-            CpuError::StackOverflow { pc, addr, stack } => write!(
-                f,
-                "Stack overflow: CALL {addr:#06x} at pc {pc:#06x}\ncall stack (oldest first): {stack:#06x?}"
-            ),
-            CpuError::StackUnderflow { pc } => write!(f, "Stack underflow at pc {pc:#06x}"),
-            CpuError::CycleLimitReached { pc } => {
-                write!(f, "Cycle limit reached before halting, at pc {pc:#06x}")
-            }
-        }
-    }
-}
-
-impl Error for CpuError {}
 
 #[cfg(test)]
 mod tests;

@@ -4,11 +4,13 @@ mod execute;
 pub use error::CpuError;
 
 use crate::{
-    constant::{MEMORY_SIZE, STACK_SIZE},
+    constant::MEMORY_SIZE,
     instruction::Instruction,
     register::{Register, Registers},
     rom::Rom,
 };
+
+pub const STACK_SIZE: usize = 16;
 
 #[derive(Debug)]
 pub struct Cpu {

@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::constant::NUM_REGISTERS;
+pub const NUM_REGISTERS: usize = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]

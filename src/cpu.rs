@@ -73,8 +73,6 @@ impl Cpu {
         }
     }
 
-    // TODO: remove once the display loop calls run_for
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn run_for(&mut self, cycle_limit: usize) -> Result<(), CpuError> {
         for _ in 0..cycle_limit {
             self.step()?;

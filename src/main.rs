@@ -1,14 +1,6 @@
-mod constant;
-mod cpu;
-mod example_fn;
-mod instruction;
-mod op;
-mod register;
-mod rom;
-
-use std::{assert_eq, println};
-
-use crate::{cpu::Cpu, example_fn::FN_ADD_TWICE, op::OP_HALT, register::Register, rom::Rom};
+use chip8_emulator::{
+    cpu::Cpu, example_fn::FN_ADD_TWICE, op::OP_HALT, register::Register, rom::Rom,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fn_main = [

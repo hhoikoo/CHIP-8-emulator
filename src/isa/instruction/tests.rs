@@ -6,11 +6,15 @@ fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(opcode)
 }
 
+fn addr(value: u16) -> Addr {
+    Addr::new(value).unwrap()
+}
+
 #[test]
 fn decodes_each_instruction() {
     assert_eq!(decode(0x0000), Ok(Instruction::Halt));
     assert_eq!(decode(0x00EE), Ok(Instruction::Return));
-    assert_eq!(decode(0x2ABC), Ok(Instruction::Call { addr: 0xABC }));
+    assert_eq!(decode(0x2ABC), Ok(Instruction::Call { addr: addr(0xABC) }));
     assert_eq!(
         decode(0x6A05),
         Ok(Instruction::LoadImmediate { x: VA, nn: 0x05 })
@@ -33,8 +37,8 @@ fn func_constants_decode_to_halt_and_return() {
 
 #[test]
 fn operand_extremes() {
-    assert_eq!(decode(0x2000), Ok(Instruction::Call { addr: 0x000 }));
-    assert_eq!(decode(0x2FFF), Ok(Instruction::Call { addr: 0xFFF }));
+    assert_eq!(decode(0x2000), Ok(Instruction::Call { addr: addr(0x000) }));
+    assert_eq!(decode(0x2FFF), Ok(Instruction::Call { addr: addr(0xFFF) }));
     assert_eq!(
         decode(0x6000),
         Ok(Instruction::LoadImmediate { x: V0, nn: 0 })
@@ -84,7 +88,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
         let x = Register::try_from(((opcode >> 8) & 0xF) as u8).unwrap();
         let y = Register::try_from(((opcode >> 4) & 0xF) as u8).unwrap();
         let nn = (opcode & 0xFF) as u8;
-        let addr = opcode & 0x0FFF;
+        let addr = Addr::new(opcode & 0x0FFF).unwrap();
 
         let expected = match opcode {
             0x0000 => Some(Instruction::Halt),

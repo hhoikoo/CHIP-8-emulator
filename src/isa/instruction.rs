@@ -2,13 +2,13 @@ mod error;
 
 pub use error::UnknownOpcodeError;
 
-use crate::isa::register::Register;
+use crate::isa::{addr::Addr, register::Register};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
     Halt,                                      // 0x0000
     Return,                                    // 0x00EE
-    Call { addr: u16 },                        // 0x2nnn
+    Call { addr: Addr },                       // 0x2nnn
     LoadImmediate { x: Register, nn: u8 },     // 0x6xnn
     AddImmediate { x: Register, nn: u8 },      // 0x7xnn
     AddWithCarry { x: Register, y: Register }, // 0x8xy4
@@ -22,7 +22,7 @@ impl TryFrom<u16> for Instruction {
             (0, 0, 0, 0) => Ok(Self::Halt),
             (0x0, 0x0, 0xE, 0xE) => Ok(Self::Return),
             (0x2, _, _, _) => Ok(Self::Call {
-                addr: Self::get_addr(opcode),
+                addr: Self::addr(opcode),
             }),
             (0x6, x, _, _) => Ok(Self::LoadImmediate {
                 x: Self::register(x),
@@ -55,8 +55,8 @@ impl Instruction {
         Register::try_from(nibble).expect("a 4-bit field always names a register")
     }
 
-    fn get_addr(opcode: u16) -> u16 {
-        opcode & 0x0FFF
+    fn addr(opcode: u16) -> Addr {
+        Addr::new(opcode & 0x0FFF).expect("a 12-bit field always fits in an Addr")
     }
 
     fn get_nn(opcode: u16) -> u8 {

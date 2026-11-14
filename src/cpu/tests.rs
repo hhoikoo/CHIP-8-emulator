@@ -122,7 +122,7 @@ fn infinite_recursion_is_stack_overflow() {
     let err = run_err(&[(0, &[0x2000])]);
     match err {
         CpuError::StackOverflow { pc, addr, stack } => {
-            assert_eq!((pc, addr), (2, 0));
+            assert_eq!((pc, addr.get()), (2, 0));
             assert_eq!(stack, vec![2; STACK_SIZE]);
         }
         other => panic!("expected StackOverflow, got {other:?}"),

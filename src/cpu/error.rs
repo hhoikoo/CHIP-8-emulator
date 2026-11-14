@@ -1,5 +1,7 @@
 use std::{error::Error, fmt::Display, write};
 
+use crate::isa::addr::Addr;
+
 #[derive(Debug)]
 pub enum CpuError {
     PcOutOfBounds {
@@ -11,7 +13,7 @@ pub enum CpuError {
     },
     StackOverflow {
         pc: usize,
-        addr: u16,
+        addr: Addr,
         stack: Vec<u16>,
     },
     StackUnderflow {

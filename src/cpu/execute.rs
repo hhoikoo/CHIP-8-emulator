@@ -1,5 +1,5 @@
 use super::{Cpu, CpuError, CpuState};
-use crate::isa::{instruction::Instruction, register::Register};
+use crate::isa::{addr::Addr, instruction::Instruction, register::Register};
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {
@@ -25,7 +25,7 @@ impl Cpu {
         }
     }
 
-    fn call(&mut self, addr: u16) -> Result<(), CpuError> {
+    fn call(&mut self, addr: Addr) -> Result<(), CpuError> {
         if self.stack_ptr >= self.stack.len() {
             return Err(CpuError::StackOverflow {
                 pc: self.pc,
@@ -36,7 +36,7 @@ impl Cpu {
 
         self.stack[self.stack_ptr] = self.pc as u16;
         self.stack_ptr += 1;
-        self.pc = addr as usize;
+        self.pc = addr.into();
         Ok(())
     }
 

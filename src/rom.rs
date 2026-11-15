@@ -4,7 +4,7 @@ pub use error::LoadError;
 
 use std::ops::Range;
 
-use crate::constant::MEMORY_SIZE;
+use crate::{constant::MEMORY_SIZE, isa::opcode::Opcode};
 
 #[derive(Debug)]
 pub struct Rom {
@@ -18,7 +18,7 @@ struct Segment {
 }
 
 impl Rom {
-    pub fn new(segments: &[(usize, &[u16])]) -> Result<Self, LoadError> {
+    pub fn new<T: Copy + Into<Opcode>>(segments: &[(usize, &[T])]) -> Result<Self, LoadError> {
         let mut segments = Rom::parse_segments(segments)?;
         segments.sort_unstable_by_key(|segment| segment.start);
 
@@ -37,11 +37,13 @@ impl Rom {
         }
     }
 
-    fn parse_segments(segments: &[(usize, &[u16])]) -> Result<Vec<Segment>, LoadError> {
+    fn parse_segments<T: Copy + Into<Opcode>>(
+        segments: &[(usize, &[T])],
+    ) -> Result<Vec<Segment>, LoadError> {
         segments
             .iter()
-            .filter(|&(_, opcodes)| !opcodes.is_empty())
-            .map(|&(start, opcodes)| Segment::new(start, opcodes))
+            .filter(|&(_, words)| !words.is_empty())
+            .map(|&(start, words)| Segment::new(start, words))
             .collect::<Result<_, _>>()
     }
 
@@ -58,10 +60,10 @@ impl Rom {
 }
 
 impl Segment {
-    fn new(start: usize, opcodes: &[u16]) -> Result<Self, LoadError> {
-        let bytes: Vec<u8> = opcodes
+    fn new<T: Copy + Into<Opcode>>(start: usize, words: &[T]) -> Result<Self, LoadError> {
+        let bytes: Vec<u8> = words
             .iter()
-            .flat_map(|opcode| opcode.to_be_bytes())
+            .flat_map(|&word| Into::<Opcode>::into(word).get().to_be_bytes())
             .collect();
 
         start

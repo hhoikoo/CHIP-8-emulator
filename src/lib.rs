@@ -1,5 +1,5 @@
 pub mod constant;
 pub mod cpu;
-pub mod example_fn;
+pub mod examples;
 pub mod isa;
 pub mod rom;

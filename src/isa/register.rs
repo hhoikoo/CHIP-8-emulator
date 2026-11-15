@@ -4,6 +4,8 @@ pub use error::RegisterOutOfRange;
 
 use std::ops::{Index, IndexMut};
 
+use crate::isa::nibble::Nibble;
+
 pub const NUM_REGISTERS: usize = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +61,24 @@ impl TryFrom<u8> for Register {
     }
 }
 
+impl From<Nibble> for Register {
+    fn from(nibble: Nibble) -> Register {
+        Register::new(nibble.get()).expect("every nibble names a register")
+    }
+}
+
+impl From<Register> for u16 {
+    fn from(register: Register) -> u16 {
+        register as u16
+    }
+}
+
+impl From<Register> for usize {
+    fn from(register: Register) -> usize {
+        register as usize
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Registers([u8; NUM_REGISTERS]);
 
@@ -66,13 +86,13 @@ impl Index<Register> for Registers {
     type Output = u8;
 
     fn index(&self, index: Register) -> &u8 {
-        &self.0[index as usize]
+        &self.0[usize::from(index)]
     }
 }
 
 impl IndexMut<Register> for Registers {
     fn index_mut(&mut self, index: Register) -> &mut u8 {
-        &mut self.0[index as usize]
+        &mut self.0[usize::from(index)]
     }
 }
 

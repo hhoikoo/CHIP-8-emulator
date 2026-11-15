@@ -20,6 +20,22 @@ fn try_from_u8_maps_each_number_to_its_register() {
 }
 
 #[test]
+fn from_nibble_maps_each_nibble_to_its_register() {
+    for (n, r) in IN_ORDER.into_iter().enumerate() {
+        let nibble = Nibble::new(n as u8).unwrap();
+        assert_eq!(Register::from(nibble), r);
+    }
+}
+
+#[test]
+fn converts_to_u16_and_usize() {
+    for (n, r) in IN_ORDER.into_iter().enumerate() {
+        assert_eq!(u16::from(r), n as u16);
+        assert_eq!(usize::from(r), n);
+    }
+}
+
+#[test]
 fn try_from_agrees_with_new_for_every_u8() {
     for value in 0..=u8::MAX {
         assert_eq!(

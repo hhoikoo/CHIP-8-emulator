@@ -629,3 +629,151 @@ fn bitwise_into_vf_ends_with_the_quirk_result() {
     assert_eq!(registers_after(&program, Quirks::default())[VF], 0);
     assert_eq!(registers_after(&program, keep_vf())[VF], 0b0111);
 }
+
+fn shift_vx_in_place() -> Quirks {
+    Quirks {
+        shift: ShiftQuirk::ShiftVxInPlace,
+        ..Quirks::default()
+    }
+}
+
+fn after(program: &[Instruction]) -> Registers {
+    registers_after(program, Quirks::default())
+}
+
+#[test]
+fn new_cpu_shifts_vy_by_default() {
+    assert_eq!(Quirks::default().shift, ShiftQuirk::ShiftVy);
+}
+
+#[test]
+fn subtract_without_borrow_sets_vf() {
+    let r = after(&[
+        load(V0, 9),
+        load(V1, 4),
+        SubtractWithBorrow { x: V0, y: V1 },
+    ]);
+    assert_eq!((r[V0], r[V1], r[VF]), (5, 4, 1));
+}
+
+#[test]
+fn subtract_with_borrow_wraps_and_clears_vf() {
+    let r = after(&[
+        load(VF, 1),
+        load(V0, 4),
+        load(V1, 9),
+        SubtractWithBorrow { x: V0, y: V1 },
+    ]);
+    assert_eq!((r[V0], r[VF]), (0xFB, 0));
+}
+
+#[test]
+fn subtract_equal_values_is_no_borrow() {
+    let r = after(&[
+        load(V0, 7),
+        load(V1, 7),
+        SubtractWithBorrow { x: V0, y: V1 },
+    ]);
+    assert_eq!((r[V0], r[VF]), (0, 1));
+}
+
+#[test]
+fn subtract_reversed_computes_vy_minus_vx() {
+    let r = after(&[load(V0, 4), load(V1, 9), SubtractReversed { x: V0, y: V1 }]);
+    assert_eq!((r[V0], r[V1], r[VF]), (5, 9, 1));
+}
+
+#[test]
+fn subtract_reversed_with_borrow_wraps_and_clears_vf() {
+    let r = after(&[
+        load(VF, 1),
+        load(V0, 9),
+        load(V1, 4),
+        SubtractReversed { x: V0, y: V1 },
+    ]);
+    assert_eq!((r[V0], r[VF]), (0xFB, 0));
+}
+
+#[test]
+fn subtract_reversed_equal_values_is_no_borrow() {
+    let r = after(&[load(V0, 7), load(V1, 7), SubtractReversed { x: V0, y: V1 }]);
+    assert_eq!((r[V0], r[VF]), (0, 1));
+}
+
+#[test]
+fn subtract_into_vf_keeps_the_flag() {
+    let borrow = after(&[
+        load(VF, 1),
+        load(V0, 2),
+        SubtractWithBorrow { x: VF, y: V0 },
+    ]);
+    assert_eq!(borrow[VF], 0);
+    let no_borrow = after(&[
+        load(VF, 5),
+        load(V0, 2),
+        SubtractWithBorrow { x: VF, y: V0 },
+    ]);
+    assert_eq!(no_borrow[VF], 1);
+    let reversed = after(&[load(VF, 2), load(V0, 5), SubtractReversed { x: VF, y: V0 }]);
+    assert_eq!(reversed[VF], 1);
+}
+
+#[test]
+fn shift_right_shifts_vy_into_vx_by_default() {
+    let r = after(&[load(V0, 0xFF), load(V1, 0b101), ShiftRight { x: V0, y: V1 }]);
+    assert_eq!((r[V0], r[V1], r[VF]), (0b10, 0b101, 1));
+}
+
+#[test]
+fn shift_left_shifts_vy_into_vx_by_default() {
+    let r = after(&[
+        load(V0, 0xFF),
+        load(V1, 0b1000_0001),
+        ShiftLeft { x: V0, y: V1 },
+    ]);
+    assert_eq!((r[V0], r[V1], r[VF]), (0b10, 0b1000_0001, 1));
+}
+
+#[test]
+fn shifts_clear_vf_when_the_shifted_out_bit_is_zero() {
+    let right = after(&[load(VF, 1), load(V1, 0b10), ShiftRight { x: V0, y: V1 }]);
+    assert_eq!((right[V0], right[VF]), (1, 0));
+    let left = after(&[
+        load(VF, 1),
+        load(V1, 0b0100_0000),
+        ShiftLeft { x: V0, y: V1 },
+    ]);
+    assert_eq!((left[V0], left[VF]), (0b1000_0000, 0));
+}
+
+#[test]
+fn shifts_with_the_in_place_quirk_ignore_vy() {
+    let program = [
+        load(V0, 0b1000_0011),
+        load(V1, 0),
+        ShiftRight { x: V0, y: V1 },
+    ];
+    let r = registers_after(&program, shift_vx_in_place());
+    assert_eq!((r[V0], r[V1], r[VF]), (0b0100_0001, 0, 1));
+
+    let program = [
+        load(V0, 0b1000_0011),
+        load(V1, 0),
+        ShiftLeft { x: V0, y: V1 },
+    ];
+    let r = registers_after(&program, shift_vx_in_place());
+    assert_eq!((r[V0], r[V1], r[VF]), (0b0000_0110, 0, 1));
+}
+
+#[test]
+fn shift_into_vf_keeps_the_flag() {
+    let right = after(&[load(V1, 0b10), ShiftRight { x: VF, y: V1 }]);
+    assert_eq!(right[VF], 0);
+    let left = after(&[load(V1, 0b1000_0000), ShiftLeft { x: VF, y: V1 }]);
+    assert_eq!(left[VF], 1);
+    let in_place = registers_after(
+        &[load(VF, 0b11), ShiftRight { x: VF, y: V1 }],
+        shift_vx_in_place(),
+    );
+    assert_eq!(in_place[VF], 1);
+}

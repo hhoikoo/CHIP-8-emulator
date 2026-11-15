@@ -22,6 +22,10 @@ pub enum Instruction {
     Or { x: Register, y: Register },
     And { x: Register, y: Register },
     Xor { x: Register, y: Register },
+    SubtractWithBorrow { x: Register, y: Register },
+    SubtractReversed { x: Register, y: Register },
+    ShiftRight { x: Register, y: Register },
+    ShiftLeft { x: Register, y: Register },
     SkipIfEqualImmediate { x: Register, nn: u8 },
     SkipIfNotEqualImmediate { x: Register, nn: u8 },
     SkipIfEqual { x: Register, y: Register },
@@ -39,6 +43,10 @@ const ADD_WITH_CARRY: Nibble = Nibble::expect_new(0x4);
 const OR: Nibble = Nibble::expect_new(0x1);
 const AND: Nibble = Nibble::expect_new(0x2);
 const XOR: Nibble = Nibble::expect_new(0x3);
+const SUBTRACT_WITH_BORROW: Nibble = Nibble::expect_new(0x5);
+const SUBTRACT_REVERSED: Nibble = Nibble::expect_new(0x7);
+const SHIFT_RIGHT: Nibble = Nibble::expect_new(0x6);
+const SHIFT_LEFT: Nibble = Nibble::expect_new(0xE);
 const JUMP_WITH_OFFSET: Nibble = Nibble::expect_new(0xB);
 const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
 const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
@@ -65,6 +73,10 @@ impl TryFrom<Opcode> for Instruction {
             [REGISTER_OP, _, _, OR] => Ok(Self::Or { x, y }),
             [REGISTER_OP, _, _, AND] => Ok(Self::And { x, y }),
             [REGISTER_OP, _, _, XOR] => Ok(Self::Xor { x, y }),
+            [REGISTER_OP, _, _, SUBTRACT_WITH_BORROW] => Ok(Self::SubtractWithBorrow { x, y }),
+            [REGISTER_OP, _, _, SUBTRACT_REVERSED] => Ok(Self::SubtractReversed { x, y }),
+            [REGISTER_OP, _, _, SHIFT_RIGHT] => Ok(Self::ShiftRight { x, y }),
+            [REGISTER_OP, _, _, SHIFT_LEFT] => Ok(Self::ShiftLeft { x, y }),
             [JUMP_WITH_OFFSET, ..] => Ok(Self::JumpWithOffset { addr }),
             [SKIP_IF_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfEqualImmediate { x, nn }),
             [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
@@ -100,6 +112,10 @@ impl Instruction {
             Self::Or { x, y } => xyn(REGISTER_OP, x, y, OR),
             Self::And { x, y } => xyn(REGISTER_OP, x, y, AND),
             Self::Xor { x, y } => xyn(REGISTER_OP, x, y, XOR),
+            Self::SubtractWithBorrow { x, y } => xyn(REGISTER_OP, x, y, SUBTRACT_WITH_BORROW),
+            Self::SubtractReversed { x, y } => xyn(REGISTER_OP, x, y, SUBTRACT_REVERSED),
+            Self::ShiftRight { x, y } => xyn(REGISTER_OP, x, y, SHIFT_RIGHT),
+            Self::ShiftLeft { x, y } => xyn(REGISTER_OP, x, y, SHIFT_LEFT),
             Self::JumpWithOffset { addr } => nnn(JUMP_WITH_OFFSET, addr),
             Self::SkipIfEqualImmediate { x, nn } => xnn(SKIP_IF_EQUAL_IMMEDIATE, x, nn),
             Self::SkipIfNotEqualImmediate { x, nn } => xnn(SKIP_IF_NOT_EQUAL_IMMEDIATE, x, nn),

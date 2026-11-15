@@ -24,7 +24,7 @@
 The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state they need. Work through one group at a time. Each opcode needs an `Instruction` variant, a decode arm, an encode arm, an `execute` arm plus handler, tests, and a row in the `README.md` table. A quirk is an instruction that behaves differently on the original COSMAC VIP interpreter and on later ones (CHIP-48, SUPER-CHIP); each needs a decision.
 
 - [ ] More opcodes
-  - [ ] Group 1: no new state
+  - [x] Group 1: no new state
     - Needs: nothing
     - Flow
       - [x] `00EE` return
@@ -44,12 +44,13 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [x] `8XY2` `VX &= VY`
       - [x] `8XY3` `VX ^= VY`
       - [x] `8XY4` `VX += VY`, carry in `VF`
-      - [ ] `8XY5` `VX -= VY`, `VF` set if no borrow
-      - [ ] `8XY6` shift right, bit shifted out goes to `VF`
-      - [ ] `8XY7` `VX = VY - VX`, `VF` set if no borrow
-      - [ ] `8XYE` shift left, bit shifted out goes to `VF`
+      - [x] `8XY5` `VX -= VY`, `VF` set if no borrow
+      - [x] `8XY6` shift right, bit shifted out goes to `VF`
+      - [x] `8XY7` `VX = VY - VX`, `VF` set if no borrow
+      - [x] `8XYE` shift left, bit shifted out goes to `VF`
     - Quirks: configurable through `Quirks` (`Cpu::with_quirks`), original COSMAC VIP behavior by default
-      - [ ] Decide the shift quirk: `8XY6`/`8XYE` shift `VY` into `VX` (original) or shift `VX` in place (CHIP-48, SUPER-CHIP)
+      - [x] Decide the shift quirk: `8XY6`/`8XYE` shift `VY` into `VX` (original) or shift `VX` in place (CHIP-48, SUPER-CHIP)
+        - Configurable with `Quirks { shift: ShiftQuirk }`, `ShiftVy` by default
       - [x] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
         - Configurable with `Quirks { jump: JumpQuirk }`, `AddV0` by default
       - [x] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it

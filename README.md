@@ -23,6 +23,10 @@ Currently supported instructions:
 | `8XY2` | `VX &= VY`, `VF = 0` (quirk: `VF` kept) |
 | `8XY3` | `VX ^= VY`, `VF = 0` (quirk: `VF` kept) |
 | `8XY4` | `VX += VY`, carry in `VF` |
+| `8XY5` | `VX -= VY`, `VF = 1` if no borrow |
+| `8XY6` | `VX = VY >> 1`, `VF` = bit shifted out (quirk: shift `VX` in place) |
+| `8XY7` | `VX = VY - VX`, `VF = 1` if no borrow |
+| `8XYE` | `VX = VY << 1`, `VF` = bit shifted out (quirk: shift `VX` in place) |
 | `9XY0` | skip next if `VX != VY` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
 

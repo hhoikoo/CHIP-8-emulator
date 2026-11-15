@@ -1,4 +1,4 @@
-use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, ProgramCounter};
+use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, ProgramCounter, ShiftQuirk};
 use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
 
 impl Cpu {
@@ -15,6 +15,10 @@ impl Cpu {
             Instruction::Or { x, y } => self.or(x, y),
             Instruction::And { x, y } => self.and(x, y),
             Instruction::Xor { x, y } => self.xor(x, y),
+            Instruction::SubtractWithBorrow { x, y } => self.subtract_with_borrow(x, y),
+            Instruction::SubtractReversed { x, y } => self.subtract_reversed(x, y),
+            Instruction::ShiftRight { x, y } => self.shift_right(x, y),
+            Instruction::ShiftLeft { x, y } => self.shift_left(x, y),
             Instruction::SkipIfEqualImmediate { x, nn } => self.skip_if_equal_immediate(x, nn),
             Instruction::SkipIfNotEqualImmediate { x, nn } => {
                 self.skip_if_not_equal_immediate(x, nn)
@@ -102,6 +106,43 @@ impl Cpu {
     fn xor(&mut self, x: Register, y: Register) {
         self.registers[x] ^= self.registers[y];
         self.reset_vf();
+    }
+
+    fn subtract_with_borrow(&mut self, x: Register, y: Register) {
+        let (val, borrowed) = self.registers[x].overflowing_sub(self.registers[y]);
+        self.registers[x] = val;
+        self.registers[Register::VF] = u8::from(!borrowed);
+    }
+
+    fn subtract_reversed(&mut self, x: Register, y: Register) {
+        let (val, borrowed) = self.registers[y].overflowing_sub(self.registers[x]);
+        self.registers[x] = val;
+        self.registers[Register::VF] = u8::from(!borrowed);
+    }
+
+    fn shift_right(&mut self, x: Register, y: Register) {
+        let source_register = self.get_shift_source_register(x, y);
+        let source = self.registers[source_register];
+        let flag = source & 0x1;
+
+        self.registers[x] = source >> 1;
+        self.registers[Register::VF] = flag;
+    }
+
+    fn shift_left(&mut self, x: Register, y: Register) {
+        let source_register = self.get_shift_source_register(x, y);
+        let source = self.registers[source_register];
+        let flag = source >> 7;
+
+        self.registers[x] = source << 1;
+        self.registers[Register::VF] = flag;
+    }
+
+    fn get_shift_source_register(&self, x: Register, y: Register) -> Register {
+        match self.quirks.shift {
+            ShiftQuirk::ShiftVy => y,
+            ShiftQuirk::ShiftVxInPlace => x,
+        }
     }
 
     fn reset_vf(&mut self) {

@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 7 * 0x1000 + 7 * 0x100;
+const DECODABLE_OPCODE_COUNT: usize = 1 + 7 * 0x1000 + 11 * 0x100;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -55,6 +55,16 @@ fn decodes_each_instruction() {
     assert_eq!(decode(0x8121), Ok(Instruction::Or { x: V1, y: V2 }));
     assert_eq!(decode(0x8122), Ok(Instruction::And { x: V1, y: V2 }));
     assert_eq!(decode(0x8123), Ok(Instruction::Xor { x: V1, y: V2 }));
+    assert_eq!(
+        decode(0x8125),
+        Ok(Instruction::SubtractWithBorrow { x: V1, y: V2 })
+    );
+    assert_eq!(decode(0x8126), Ok(Instruction::ShiftRight { x: V1, y: V2 }));
+    assert_eq!(
+        decode(0x8127),
+        Ok(Instruction::SubtractReversed { x: V1, y: V2 })
+    );
+    assert_eq!(decode(0x812E), Ok(Instruction::ShiftLeft { x: V1, y: V2 }));
 }
 
 #[test]
@@ -83,7 +93,8 @@ fn operand_extremes() {
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
-        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8125, 0x812F, 0xF000,
+        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
+        0xF000,
     ] {
         assert_eq!(
             decode(opcode),
@@ -103,7 +114,7 @@ fn near_misses_of_return_are_unknown() {
 
 #[test]
 fn only_the_known_suffixes_decode_in_the_8_family() {
-    let known_suffixes = [0x0, 0x1, 0x2, 0x3, 0x4];
+    let known_suffixes = [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0xE];
     let decoded: Vec<u16> = (0x8000..=0x8FFF).filter(|&op| decode(op).is_ok()).collect();
     assert_eq!(decoded.len(), known_suffixes.len() * 0x100);
     assert!(
@@ -136,6 +147,10 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0x8000..=0x8FFF if opcode & 0xF == 2 => Some(Instruction::And { x, y }),
             0x8000..=0x8FFF if opcode & 0xF == 3 => Some(Instruction::Xor { x, y }),
             0x8000..=0x8FFF if opcode & 0xF == 4 => Some(Instruction::AddWithCarry { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 5 => Some(Instruction::SubtractWithBorrow { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 6 => Some(Instruction::ShiftRight { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 7 => Some(Instruction::SubtractReversed { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 0xE => Some(Instruction::ShiftLeft { x, y }),
             0x9000..=0x9FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfNotEqual { x, y }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
             _ => None,
@@ -188,6 +203,10 @@ fn encodes_each_instruction() {
         (Instruction::Or { x: V1, y: V2 }, 0x8121),
         (Instruction::And { x: V1, y: V2 }, 0x8122),
         (Instruction::Xor { x: V1, y: V2 }, 0x8123),
+        (Instruction::SubtractWithBorrow { x: V1, y: V2 }, 0x8125),
+        (Instruction::ShiftRight { x: V1, y: V2 }, 0x8126),
+        (Instruction::SubtractReversed { x: V1, y: V2 }, 0x8127),
+        (Instruction::ShiftLeft { x: V1, y: V2 }, 0x812E),
     ];
     for (instruction, opcode) in cases {
         assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");

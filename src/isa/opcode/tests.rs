@@ -15,17 +15,22 @@ fn all_registers() -> impl Iterator<Item = Register> {
 
 #[test]
 fn nibbles_are_high_to_low() {
-    assert_eq!(Opcode::new(0xABCD).nibbles(), [0xA, 0xB, 0xC, 0xD]);
-    assert_eq!(Opcode::new(0x0000).nibbles(), [0, 0, 0, 0]);
-    assert_eq!(Opcode::new(0xFFFF).nibbles(), [0xF, 0xF, 0xF, 0xF]);
+    assert_eq!(
+        Opcode::new(0xABCD).nibbles(),
+        [0xA, 0xB, 0xC, 0xD].map(nibble)
+    );
+    assert_eq!(Opcode::new(0x0000).nibbles(), [0, 0, 0, 0].map(nibble));
+    assert_eq!(
+        Opcode::new(0xFFFF).nibbles(),
+        [0xF, 0xF, 0xF, 0xF].map(nibble)
+    );
 }
 
 #[test]
 fn nibbles_rebuild_every_opcode() {
     for value in 0..=u16::MAX {
-        let [a, b, c, d] = Opcode::new(value).nibbles();
-        let rebuilt = (a as u16) << 12 | (b as u16) << 8 | (c as u16) << 4 | d as u16;
-        assert_eq!(rebuilt, value, "{value:#06x}");
+        let opcode = Opcode::new(value);
+        assert_eq!(Opcode::from(opcode.nibbles()), opcode, "{value:#06x}");
     }
 }
 

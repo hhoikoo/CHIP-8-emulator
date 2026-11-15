@@ -14,13 +14,13 @@ impl Opcode {
         self.0
     }
 
-    pub const fn nibbles(self) -> [u8; 4] {
+    pub const fn nibbles(self) -> [Nibble; 4] {
         let value = self.get();
         [
-            (value >> 12) as u8 & 0xF,
-            (value >> 8) as u8 & 0xF,
-            (value >> 4) as u8 & 0xF,
-            value as u8 & 0xF,
+            Nibble::expect_new((value >> 12) as u8 & 0xF),
+            Nibble::expect_new((value >> 8) as u8 & 0xF),
+            Nibble::expect_new((value >> 4) as u8 & 0xF),
+            Nibble::expect_new(value as u8 & 0xF),
         ]
     }
 }
@@ -34,6 +34,12 @@ impl From<u16> for Opcode {
 impl From<Opcode> for u16 {
     fn from(opcode: Opcode) -> u16 {
         opcode.get()
+    }
+}
+
+impl From<[Nibble; 4]> for Opcode {
+    fn from([a, b, c, d]: [Nibble; 4]) -> Opcode {
+        Opcode::new(u16::from(a) << 12 | u16::from(b) << 8 | u16::from(c) << 4 | u16::from(d))
     }
 }
 
@@ -66,7 +72,7 @@ pub struct Xyn {
 
 impl From<Opcode> for Nnn {
     fn from(opcode: Opcode) -> Nnn {
-        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        let [prefix, x, y, n] = opcode.nibbles();
         let addr = u16::from(x) << 8 | u16::from(y) << 4 | u16::from(n);
         Nnn {
             prefix,
@@ -83,7 +89,7 @@ impl From<Nnn> for Opcode {
 
 impl From<Opcode> for Xnn {
     fn from(opcode: Opcode) -> Xnn {
-        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        let [prefix, x, y, n] = opcode.nibbles();
         Xnn {
             prefix,
             x: Register::from(x),
@@ -100,7 +106,7 @@ impl From<Xnn> for Opcode {
 
 impl From<Opcode> for Xyn {
     fn from(opcode: Opcode) -> Xyn {
-        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        let [prefix, x, y, n] = opcode.nibbles();
         Xyn {
             prefix,
             x: Register::from(x),

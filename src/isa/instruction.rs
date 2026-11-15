@@ -20,7 +20,7 @@ pub enum Instruction {
     AddWithCarry { x: Register, y: Register },
 }
 
-const RETURN: Opcode = Opcode::new(0x00EE);
+const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
 const JUMP: Nibble = Nibble::expect_new(0x1);
 const CALL: Nibble = Nibble::expect_new(0x2);
 const LOAD_IMMEDIATE: Nibble = Nibble::expect_new(0x6);
@@ -33,18 +33,18 @@ impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
 
     fn try_from(opcode: Opcode) -> Result<Self, UnknownOpcodeError> {
-        let Nnn { prefix, addr } = opcode.into();
+        let Nnn { addr, .. } = opcode.into();
         let Xnn { x, nn, .. } = opcode.into();
-        let Xyn { y, n, .. } = opcode.into();
+        let Xyn { y, .. } = opcode.into();
 
-        match (opcode, prefix, n) {
-            (RETURN, ..) => Ok(Self::Return),
-            (_, JUMP, _) => Ok(Self::Jump { addr }),
-            (_, CALL, _) => Ok(Self::Call { addr }),
-            (_, LOAD_IMMEDIATE, _) => Ok(Self::LoadImmediate { x, nn }),
-            (_, ADD_IMMEDIATE, _) => Ok(Self::AddImmediate { x, nn }),
-            (_, REGISTER_OP, ADD_WITH_CARRY) => Ok(Self::AddWithCarry { x, y }),
-            (_, JUMP_WITH_OFFSET, _) => Ok(Self::JumpWithOffset { addr }),
+        match opcode.nibbles() {
+            RETURN => Ok(Self::Return),
+            [JUMP, ..] => Ok(Self::Jump { addr }),
+            [CALL, ..] => Ok(Self::Call { addr }),
+            [LOAD_IMMEDIATE, ..] => Ok(Self::LoadImmediate { x, nn }),
+            [ADD_IMMEDIATE, ..] => Ok(Self::AddImmediate { x, nn }),
+            [REGISTER_OP, _, _, ADD_WITH_CARRY] => Ok(Self::AddWithCarry { x, y }),
+            [JUMP_WITH_OFFSET, ..] => Ok(Self::JumpWithOffset { addr }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }
@@ -65,7 +65,7 @@ fn xyn(prefix: Nibble, x: Register, y: Register, n: Nibble) -> Opcode {
 impl Instruction {
     pub fn encode(self) -> Opcode {
         match self {
-            Self::Return => RETURN,
+            Self::Return => Opcode::from(RETURN),
             Self::Jump { addr } => nnn(JUMP, addr),
             Self::Call { addr } => nnn(CALL, addr),
             Self::LoadImmediate { x, nn } => xnn(LOAD_IMMEDIATE, x, nn),

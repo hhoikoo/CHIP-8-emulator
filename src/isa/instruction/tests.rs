@@ -1,5 +1,4 @@
 use super::*;
-use crate::op::{OP_HALT, OP_RETURN};
 use Register::*;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
@@ -27,12 +26,6 @@ fn decodes_each_instruction() {
         decode(0x8124),
         Ok(Instruction::AddWithCarry { x: V1, y: V2 })
     );
-}
-
-#[test]
-fn func_constants_decode_to_halt_and_return() {
-    assert_eq!(decode(OP_HALT), Ok(Instruction::Halt));
-    assert_eq!(decode(OP_RETURN), Ok(Instruction::Return));
 }
 
 #[test]

@@ -1,3 +1,5 @@
-use crate::op::OP_RETURN;
+use crate::isa::instruction::Instruction;
 
-pub const FN_ADD_TWICE: [u16; 3] = [0x8014, 0x8014, OP_RETURN];
+pub fn fn_add_twice() -> [u16; 3] {
+    [0x8014, 0x8014, Instruction::Return.encode().get()]
+}

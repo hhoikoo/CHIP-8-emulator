@@ -43,7 +43,6 @@ impl From<Addr> for usize {
     }
 }
 
-/// Lets addresses use hex format specs like `{addr:#06x}`.
 impl fmt::LowerHex for Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)

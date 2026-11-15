@@ -86,7 +86,6 @@ fn long_segment_vs_non_neighbor() {
 
 #[test]
 fn many_segments_shuffled_no_false_positive() {
-    // 100 two-byte segments spaced 4 apart, in reverse order
     let ops = [0xABCDu16];
     let segs: Vec<(usize, &[u16])> = (0..100).rev().map(|i| (0x200 + i * 4, &ops[..])).collect();
     assert!(build(&segs).is_ok());
@@ -127,8 +126,8 @@ fn big_endian_and_untouched_bytes_zero() {
     let mem = loaded(&[(0x300, &[0x1234]), (0x200, &[0x6000, 0xA22A])]);
     assert_eq!(&mem[0x200..0x204], &[0x60, 0x00, 0xA2, 0x2A]);
     assert_eq!(&mem[0x300..0x302], &[0x12, 0x34]);
-    // 0x60, 0xA2, 0x2A, 0x12, 0x34
-    assert_eq!(mem.iter().filter(|&&b| b != 0).count(), 5);
+    let nonzero: Vec<u8> = mem.iter().copied().filter(|&b| b != 0).collect();
+    assert_eq!(nonzero, [0x60, 0xA2, 0x2A, 0x12, 0x34]);
 }
 
 #[test]

@@ -11,12 +11,12 @@ use crate::isa::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
-    Halt,                                      // 0x0000
-    Return,                                    // 0x00EE
-    Call { addr: Addr },                       // 0x2nnn
-    LoadImmediate { x: Register, nn: u8 },     // 0x6xnn
-    AddImmediate { x: Register, nn: u8 },      // 0x7xnn
-    AddWithCarry { x: Register, y: Register }, // 0x8xy4
+    Halt,
+    Return,
+    Call { addr: Addr },
+    LoadImmediate { x: Register, nn: u8 },
+    AddImmediate { x: Register, nn: u8 },
+    AddWithCarry { x: Register, y: Register },
 }
 
 impl TryFrom<Opcode> for Instruction {

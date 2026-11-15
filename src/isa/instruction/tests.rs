@@ -1,6 +1,8 @@
 use super::*;
 use Register::*;
 
+const DECODABLE_OPCODE_COUNT: usize = 1 + 1 + 3 * 0x1000 + 0x100;
+
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
 }
@@ -48,13 +50,7 @@ fn operand_extremes() {
 
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
-    for opcode in [
-        0x00E0, // CLS, not implemented
-        0x0001, 0x0123, // SYS addr, not implemented
-        0x1000, // JP, not implemented
-        0x8120, 0x8125, // 8xy0 / 8xy5, not implemented
-        0xF000,
-    ] {
+    for opcode in [0x00E0, 0x0001, 0x0123, 0x1000, 0x8120, 0x8125, 0xF000] {
         assert_eq!(
             decode(opcode),
             Err(UnknownOpcodeError {
@@ -107,8 +103,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             (got, want) => panic!("opcode {opcode:#06x}: got {got:?}, expected {want:?}"),
         }
     }
-    // Halt + Return + Call + LoadImmediate + AddImmediate + AddWithCarry
-    assert_eq!(decoded, 1 + 1 + 4096 * 3 + 256);
+    assert_eq!(decoded, DECODABLE_OPCODE_COUNT);
 }
 
 #[test]
@@ -146,7 +141,7 @@ fn encode_is_the_reverse_of_decode_for_every_opcode() {
             round_tripped += 1;
         }
     }
-    assert_eq!(round_tripped, 1 + 1 + 4096 * 3 + 256);
+    assert_eq!(round_tripped, DECODABLE_OPCODE_COUNT);
 }
 
 #[test]

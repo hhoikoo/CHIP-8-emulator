@@ -37,7 +37,6 @@ impl From<Opcode> for u16 {
     }
 }
 
-/// Lets opcodes use hex format specs like `{opcode:#06x}`.
 impl fmt::LowerHex for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)

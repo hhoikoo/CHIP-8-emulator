@@ -18,81 +18,183 @@
 - [x] Load a ROM from a file
   - Raw bytes loaded at `PROGRAM_START`, the standard `.ch8` format (`Rom::from_bytes`, `Rom::from_file`)
   - `cargo run -- <rom>` runs a ROM file; with no argument it runs the demo program
+
+## Opcodes
+
+The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state they need. Work through one group at a time. Each opcode needs an `Instruction` variant, a decode arm, an encode arm, an `execute` arm plus handler, tests, and a row in the `README.md` table. A quirk is an instruction that behaves differently on the original COSMAC VIP interpreter and on later ones (CHIP-48, SUPER-CHIP); each needs a decision.
+
 - [ ] More opcodes
-  - The original CHIP-8 has 34 opcodes (plus `0NNN`, which modern interpreters ignore). 5 are done.
-  - Flow
-    - [x] `00EE` return
-    - [ ] `1NNN` jump to `NNN`
-    - [x] `2NNN` call `NNN`
-    - [ ] `BNNN` jump to `NNN + V0`
-  - Skips
-    - [ ] `3XNN` skip next if `VX == NN`
-    - [ ] `4XNN` skip next if `VX != NN`
-    - [ ] `5XY0` skip next if `VX == VY`
-    - [ ] `9XY0` skip next if `VX != VY`
-  - Registers
-    - [x] `6XNN` `VX = NN`
-    - [x] `7XNN` `VX += NN`
-    - [ ] `8XY0` `VX = VY`
-    - [ ] `8XY1` `VX |= VY`
-    - [ ] `8XY2` `VX &= VY`
-    - [ ] `8XY3` `VX ^= VY`
-    - [x] `8XY4` `VX += VY`, carry in `VF`
-    - [ ] `8XY5` `VX -= VY`, `VF` set if no borrow
-    - [ ] `8XY6` shift `VX` right, bit shifted out goes to `VF`
-    - [ ] `8XY7` `VX = VY - VX`, `VF` set if no borrow
-    - [ ] `8XYE` shift `VX` left, bit shifted out goes to `VF`
-    - [ ] `CXNN` `VX` = random byte `& NN` (needs a random number source)
-  - Index register `I` and memory (needs the `I` register)
+  - [ ] Group 1: no new state
+    - Needs: nothing
+    - Flow
+      - [x] `00EE` return
+      - [x] `2NNN` call `NNN`
+      - [ ] `1NNN` jump to `NNN`
+      - [ ] `BNNN` jump to `NNN + V0`
+    - Skips
+      - [ ] `3XNN` skip next if `VX == NN`
+      - [ ] `4XNN` skip next if `VX != NN`
+      - [ ] `5XY0` skip next if `VX == VY`
+      - [ ] `9XY0` skip next if `VX != VY`
+    - Registers
+      - [x] `6XNN` `VX = NN`
+      - [x] `7XNN` `VX += NN`
+      - [ ] `8XY0` `VX = VY`
+      - [ ] `8XY1` `VX |= VY`
+      - [ ] `8XY2` `VX &= VY`
+      - [ ] `8XY3` `VX ^= VY`
+      - [x] `8XY4` `VX += VY`, carry in `VF`
+      - [ ] `8XY5` `VX -= VY`, `VF` set if no borrow
+      - [ ] `8XY6` shift right, bit shifted out goes to `VF`
+      - [ ] `8XY7` `VX = VY - VX`, `VF` set if no borrow
+      - [ ] `8XYE` shift left, bit shifted out goes to `VF`
+    - Quirks
+      - [ ] Decide the shift quirk: `8XY6`/`8XYE` shift `VY` into `VX` (original) or shift `VX` in place (CHIP-48, SUPER-CHIP)
+      - [ ] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
+      - [ ] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it
+    - [ ] Remove the custom `0x0000` halt (after `1NNN`)
+      - [ ] Decide what `0NNN` does: ignore it like modern interpreters, or report it as an unknown opcode
+      - [ ] End test programs and generated ROMs with a jump to themselves and check them after a cycle budget
+      - [ ] Remove `Instruction::Halt` and `CpuState::Halt`, rework `run()` and the demo program, and drop the `0000` row from `README.md`
+  - [ ] Group 2: index register `I`
+    - Needs: nothing
+    - [ ] Add a 16-bit `I` register to `Cpu`
+    - [ ] Add a `CpuError` variant for reads and writes at `I` past the end of memory
     - [ ] `ANNN` `I = NNN`
     - [ ] `FX1E` `I += VX`
-    - [ ] `FX29` `I` = address of the font sprite for digit `VX` (needs the font in memory)
     - [ ] `FX33` store `VX` as 3 decimal digits at `I`, `I+1`, `I+2`
     - [ ] `FX55` store `V0` to `VX` in memory starting at `I`
     - [ ] `FX65` load `V0` to `VX` from memory starting at `I`
-  - Timers (needs a delay timer and a sound timer)
+    - [ ] Decide the memory quirk: `FX55`/`FX65` advance `I` (original) or leave it (CHIP-48, SUPER-CHIP)
+  - [ ] Group 3: font
+    - Needs: Group 2 (`FX29` sets `I`)
+    - [ ] Add the standard font: 16 hex digits (`0`–`F`), 5 bytes each
+    - [ ] Load it in `Cpu::new` at a `FONT_START` constant in the reserved area (commonly `0x050`)
+    - [ ] `FX29` `I` = address of the font sprite for digit `VX`
+  - [ ] Group 4: display
+    - Needs: Group 2 (`DXYN` reads the sprite at `I`)
+    - [ ] Add a 64×32 one-bit framebuffer to `Cpu`, with a read-only getter
+    - [ ] `00E0` clear the screen
+    - [ ] `DXYN` XOR-draw an `N`-byte sprite from `I` at `(VX, VY)`, `VF` = collision
+    - [ ] Decide the clipping quirk: sprites crossing the edge are clipped (original) or wrap around
+    - [ ] Decide the display-wait quirk: `DXYN` waits for the next 60 Hz frame (original) or draws at once
+    - [ ] Decide how to bring in the GPL-3.0 Timendus test ROMs: commit them, download them in the test, or keep them untracked (`tests/roms/README.md`)
+    - [ ] Decide the golden-image format for framebuffer tests (e.g. 32 text lines of `#` and `.`)
+    - [ ] Real-ROM test: `1-chip8-logo.ch8`, compare the framebuffer after 39 cycles with a golden image
+      - Needs: `1NNN` from Group 1
+    - [ ] Real-ROM test: `2-ibm-logo.ch8`, compare the framebuffer after 20 cycles
+      - Needs: `1NNN` from Group 1
+    - [ ] Show the framebuffer in a window (see "Display" below)
+  - [ ] Group 5: timers
+    - Needs: nothing
+    - [ ] Add an 8-bit delay timer and an 8-bit sound timer to `Cpu`
+    - [ ] Add a tick API (e.g. `Cpu::tick_timers()`) for a 60 Hz loop to call
     - [ ] `FX07` `VX` = delay timer
     - [ ] `FX15` delay timer = `VX`
     - [ ] `FX18` sound timer = `VX`
-  - Display (needs a screen buffer)
-    - [ ] `00E0` clear the screen
-    - [ ] `DXYN` draw an `N`-byte sprite from `I` at `(VX, VY)`, `VF` = collision
-  - Keypad (needs key input)
+  - [ ] Group 6: random numbers
+    - Needs: nothing
+    - [ ] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)
+    - [ ] Add the seedable source to `Cpu`, injectable so tests stay deterministic
+    - [ ] `CXNN` `VX` = random byte `& NN`
+  - [ ] Group 7: keypad
+    - Needs: nothing
+    - [ ] Add state for 16 keys, with an API to press and release them
+    - [ ] Add a `CpuState` for waiting on a key press into `VX`
     - [ ] `EX9E` skip next if key `VX` is pressed
     - [ ] `EXA1` skip next if key `VX` is not pressed
-    - [ ] `FX0A` wait for a key press, store it in `VX`
-  - Decide how to handle the quirks that differ between interpreters (`8XY6`/`8XYE` shifting `VX` or `VY`, `FX55`/`FX65` changing `I`, `BNNN` using `V0` or `VX`)
+    - [ ] `FX0A` wait for a key press and release, store it in `VX`
+  - [ ] Group 8: quirk settings and the remaining real-ROM tests
+    - [ ] Decide whether to support more than one interpreter's quirks; if so, add a `Quirks` struct passed to `Cpu::new`
+    - [ ] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
+      - Needs: Groups 1, 2 and 4
+    - [ ] Real-ROM test: `4-flags.ch8` (`VF` as input and output)
+      - Needs: Groups 1, 2 and 4
+    - [ ] Add a way to preset a single byte in memory before running (`Rom::new` only writes 2-byte words, so `0x1FF` would also overwrite `0x200`)
+    - [ ] Real-ROM test: `5-quirks.ch8` (preset `1` at `0x1FF` to pick CHIP-8)
+      - Needs: every group, the quirk decisions and the byte preset above
 
 ## Display
 
-- [ ] Display support
-  - Goal: get games like Pong running
-  - Show the screen buffer in a window or the terminal (pick a library)
-  - Read the keyboard and map it to the 16-key keypad
-  - Run the CPU at a steady speed
-  - Tick the delay and sound timers at 60 Hz
-  - Beep while the sound timer is above zero (optional)
-  - Test with a real Pong ROM
+Work on this alongside the opcode groups: each item says which group it needs, so a window can show the screen as soon as Group 4 is done.
+
+- [ ] Display support (goal: play Pong)
+  - [x] Choose the frontend library: `minifb` (no system library, a simple window + pixel buffer + key state API; `sdl2` was the alternative)
+  - [ ] Add the frontend: a window that draws the framebuffer scaled up (e.g. ×10); it only reads the framebuffer, so the core stays frontend-agnostic
+    - Needs: Group 4 (framebuffer, `00E0`, `DXYN`)
+    - First milestone: see the IBM logo (`2-ibm-logo.ch8`) on screen
+  - [ ] Run the CPU at a steady speed: a fixed number of instructions per 60 Hz frame
+    - [ ] Decide the instructions per frame (about 10–15, i.e. roughly 600–900 per second, is typical)
+    - [ ] Use a fixed-timestep clock, so a 120 Hz (ProMotion) display still runs the emulator at 60 Hz
+    - Needs: the window above, and the halt removal in Group 1 (the frame loop replaces `run()`)
+  - [ ] Tick the delay and sound timers once per frame
+    - Needs: Group 5 and the frame loop
+  - [ ] Beep while the sound timer is above zero with `rodio` (optional)
+    - Needs: Group 5
+  - [ ] Map the keyboard to the 16-key keypad (`1234`/`QWER`/`ASDF`/`ZXCV`)
+    - Needs: Group 7
+  - [ ] Play a real Pong ROM
+    - Needs: every opcode group (Pong uses `CXNN`, timers and keys)
 
 ## Assembler
 
-- [ ] Assembler
-  - [ ] Convert to a multi-crate Cargo workspace
-    - `core` crate: `Instruction`, `Register`, opcode constants, decode and encode
-      - Add a round-trip test over all 65,536 opcodes
-      - Encode lives next to decode because the assembler needs it
-    - `emulator` crate: `Cpu`, `Rom`, command line (lib + bin)
-    - `assembler` crate
-    - Turn the sample programs (`op.rs`, `example_fn.rs`) into test fixtures or examples
-  - [ ] Design the assembly syntax
-    - Mnemonics, comments, number formats, labels
-    - A way to place code at an address
-  - [ ] Parse text into `Instruction`s, with errors that point at the line
-  - [ ] Resolve labels to addresses
-  - [ ] Encode to opcodes using `core`
-  - [ ] Output something the emulator can load
-    - Ties into "Load a ROM from a file" above
-  - [ ] Command line: assemble a source file into an output file
-  - [ ] Disassembler / `Display` for `Instruction`
-    - Lives with the assembler so the syntax and the printer stay in sync
-  - [ ] Tests: assemble a program, run it in the emulator, check the result
+Work on this after the opcode groups: the assembler can only write the mnemonics `Instruction` has, so each group adds mnemonics.
+
+- [ ] Assembler (goal: write programs as text instead of `Instruction` listings)
+  - [ ] Split into a Cargo workspace
+    - [ ] Create the `core` crate: `src/isa/` (`Instruction` with decode and encode, `Opcode`, `Nnn`/`Xnn`/`Xyn`, `Addr`, `Nibble`, `Register`) and `PROGRAM_START`
+    - [ ] Create the `emulator` crate: `Cpu`, `Memory`, `Rom`, `main.rs` (lib + bin), depending on `core`
+    - [ ] Create the `assembler` crate, depending on `core`
+    - [ ] Keep `tests/generated_roms.rs` working: decide whether it moves to `emulator` or stays at the workspace root
+    - [ ] Decide where `src/examples.rs` (`fn_main`, `fn_add_twice`, `FN_ADD_TWICE_ADDR`) goes: the `emulator` crate or test fixtures
+    - Needs: nothing; best done before the assembler crate has code
+  - [x] Round-trip test over all 65,536 opcodes (`encode_is_the_reverse_of_decode_for_every_opcode` in `src/isa/instruction/tests.rs`)
+  - [ ] Keep the exhaustive tests current: update `DECODABLE_OPCODE_COUNT` and the expected-instruction match in `exhaustive_decode_matches_the_opcode_bits`
+    - Needs: each "More opcodes" group, as its variants are added
+  - [x] Output format: raw `.ch8` bytes, opcodes big-endian, which `Rom::from_file` loads at `PROGRAM_START` (see "Load a ROM from a file")
+  - [ ] Decide the assembly syntax
+    - [ ] Decide the mnemonics: names close to the manual (`LD`, `ADD`, `JP`, `CALL`, `RET`) or the `Instruction` variant names (no `HALT`: programs end with a jump to themselves)
+    - [ ] Decide the operand style: `LD V1, 0x05` or `V1 = 5`
+    - [ ] Decide the comment marker: `;` or `//`
+    - [ ] Decide the number formats: decimal, `0x` hex, `0b` binary
+    - [ ] Decide the label syntax: `name:` on its own line or before an instruction
+    - [ ] Decide the origin directive: `.org 0x300` to place code at an address, with `0x200` as the default
+    - [ ] Decide the data directive for sprite bytes: `.byte 0xF0, 0x90, 0xF0` or `db`
+    - [ ] Decide whether mnemonics and register names are case-insensitive
+    - Needs: nothing; decide before the parser
+  - [ ] Parse text into lines of instructions, labels and directives
+    - [ ] Report errors with the line number (and the column if easy)
+    - [ ] Reject unknown mnemonics, bad operands and out-of-range numbers (`Addr`, `Nibble`, `u8`)
+    - [ ] Unit-test each mnemonic and each error
+    - Needs: the syntax decisions, and every mnemonic from "More opcodes" (add each as its group lands)
+  - [ ] Resolve labels to addresses in two passes
+    - [ ] Pass 1: walk the lines, track the current address (starting at the origin) and record each label
+    - [ ] Pass 2: replace label operands with an `Addr`
+    - [ ] Report an undefined label, a duplicate label, and an address past the end of memory, with the line number
+    - Needs: the parser; `1NNN` and `BNNN` in Group 1 (`2NNN` call exists) and `ANNN` in Group 2, so labels can be jump, call and `I` targets
+  - [ ] Encode to bytes
+    - [ ] Turn each `Instruction` into two bytes with `Instruction::encode()`
+    - [ ] Emit data bytes as they are
+    - [ ] Pad up to the origin when `.org` moves forward; report an `.org` that moves backward or below `0x200`
+    - [ ] Check that the program fits in memory after `PROGRAM_START`
+    - Needs: label resolution
+  - [ ] Write the `.ch8` file
+    - Needs: encoding
+  - [ ] Command line: `assembler <source> [-o <output>]`
+    - [ ] Print errors as `file:line: message` and exit with a non-zero code
+    - Needs: the `.ch8` writer
+  - [ ] Disassembler: `Display` for `Instruction`
+    - [ ] Print each instruction in the assembler syntax, so a parse of the output gives the same instruction
+    - [ ] Test that printing then parsing round-trips for every decodable opcode
+    - [ ] Optional: a `disassemble <rom>` command that prints addresses, opcodes and mnemonics
+    - Needs: the syntax decisions, and every mnemonic (extend it with each group); the round-trip test needs the parser
+  - [ ] Tests: assemble, run in the emulator, check the result
+    - [ ] Assemble a source, load it with `Rom::from_bytes`, run it for a cycle budget, and check registers or the framebuffer
+    - [ ] Check that assembling a source gives the same bytes as the matching `tests/roms/generated/*.ch8`
+    - Needs: the assembler crate, and `1NNN` plus the halt removal in Group 1 (programs end with a jump to themselves)
+  - [ ] Convert existing programs to assembly sources
+    - [ ] Turn the listings in `tests/generated_roms.rs` into `.asm` files, and compare the assembled bytes with `tests/roms/generated/*.ch8`
+    - [ ] Turn `fn_main` and `fn_add_twice` in `src/examples.rs` into an `.asm` file that uses labels (`FN_ADD_TWICE_ADDR` becomes a label)
+    - [ ] Decide whether the `.asm` files replace the Rust listings and the `--ignored` regenerate step, or sit next to them
+    - [ ] Write a sprite example with the data directive (e.g. the font digits), once Group 4 is done
+    - Needs: the assembler CLI; Group 4 for the sprite example

@@ -1,4 +1,4 @@
-use super::{Cpu, CpuError, CpuState};
+use super::{Cpu, CpuError, CpuState, ProgramCounter};
 use crate::isa::{addr::Addr, instruction::Instruction, register::Register};
 
 impl Cpu {
@@ -18,7 +18,7 @@ impl Cpu {
         match self.stack_ptr.checked_sub(1) {
             Some(new_stack_ptr) => {
                 self.stack_ptr = new_stack_ptr;
-                self.pc = self.stack[self.stack_ptr] as usize;
+                self.pc = self.stack[self.stack_ptr];
                 Ok(())
             }
             None => Err(CpuError::StackUnderflow { pc: self.pc }),
@@ -34,9 +34,9 @@ impl Cpu {
             });
         }
 
-        self.stack[self.stack_ptr] = self.pc as u16;
+        self.stack[self.stack_ptr] = self.pc;
         self.stack_ptr += 1;
-        self.pc = addr.into();
+        self.pc = ProgramCounter::from(addr);
         Ok(())
     }
 

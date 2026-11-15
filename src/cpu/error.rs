@@ -1,26 +1,27 @@
 use std::{error::Error, fmt::Display, write};
 
+use super::ProgramCounter;
 use crate::isa::{addr::Addr, opcode::Opcode};
 
 #[derive(Debug)]
 pub enum CpuError {
     PcOutOfBounds {
-        pc: usize,
+        pc: ProgramCounter,
     },
     UnknownOpcode {
         opcode: Opcode,
-        pc: usize,
+        pc: ProgramCounter,
     },
     StackOverflow {
-        pc: usize,
+        pc: ProgramCounter,
         addr: Addr,
-        stack: Vec<u16>,
+        stack: Vec<ProgramCounter>,
     },
     StackUnderflow {
-        pc: usize,
+        pc: ProgramCounter,
     },
     CycleLimitReached {
-        pc: usize,
+        pc: ProgramCounter,
     },
 }
 
@@ -34,10 +35,13 @@ impl Display for CpuError {
                     "Opcode {opcode:#06x} at pc {pc:#06x} is unrecognized or is not supported yet"
                 )
             }
-            CpuError::StackOverflow { pc, addr, stack } => write!(
-                f,
-                "Stack overflow: CALL {addr:#06x} at pc {pc:#06x}\ncall stack (oldest first): {stack:#06x?}"
-            ),
+            CpuError::StackOverflow { pc, addr, stack } => {
+                let stack: Vec<u16> = stack.iter().copied().map(u16::from).collect();
+                write!(
+                    f,
+                    "Stack overflow: CALL {addr:#06x} at pc {pc:#06x}\ncall stack (oldest first): {stack:#06x?}"
+                )
+            }
             CpuError::StackUnderflow { pc } => write!(f, "Stack underflow at pc {pc:#06x}"),
             CpuError::CycleLimitReached { pc } => {
                 write!(f, "Cycle limit reached before halting, at pc {pc:#06x}")

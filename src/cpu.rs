@@ -1,7 +1,9 @@
 mod error;
 mod execute;
+mod program_counter;
 
 pub use error::CpuError;
+pub use program_counter::ProgramCounter;
 
 use crate::{
     isa::{
@@ -18,9 +20,9 @@ pub const STACK_SIZE: usize = 16;
 #[derive(Debug)]
 pub struct Cpu {
     registers: Registers,
-    pc: usize,
+    pc: ProgramCounter,
     memory: Memory,
-    stack: [u16; STACK_SIZE],
+    stack: [ProgramCounter; STACK_SIZE],
     stack_ptr: usize,
     state: CpuState,
 }
@@ -38,9 +40,9 @@ impl Cpu {
 
         Cpu {
             registers: Registers::default(),
-            pc: 0,
+            pc: ProgramCounter::new(0),
             memory,
-            stack: [0; STACK_SIZE],
+            stack: [ProgramCounter::new(0); STACK_SIZE],
             stack_ptr: 0,
             state: CpuState::Running,
         }
@@ -80,14 +82,14 @@ impl Cpu {
             pc: self.pc,
         })?;
 
-        self.pc += 2;
+        self.pc.advance();
 
         self.execute(instruction)
     }
 
     fn read_opcode(&self) -> Result<Opcode, CpuError> {
         self.memory
-            .read_opcode(self.pc)
+            .read_opcode(usize::from(self.pc))
             .ok_or(CpuError::PcOutOfBounds { pc: self.pc })
     }
 }

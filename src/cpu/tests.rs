@@ -143,7 +143,7 @@ fn run_err<T: Copy + Into<Opcode>>(segs: &[(usize, &[T])]) -> CpuError {
 #[test]
 fn ret_with_empty_stack_is_underflow_at_the_next_pc() {
     let err = run_err(&[(0, &[Return])]);
-    assert!(matches!(err, CpuError::StackUnderflow { pc: 2 }));
+    assert!(matches!(err, CpuError::StackUnderflow { pc } if pc.get() == 2));
 }
 
 #[test]
@@ -151,8 +151,8 @@ fn infinite_recursion_is_stack_overflow() {
     let err = run_err(&[(0, &[call(0)])]);
     match err {
         CpuError::StackOverflow { pc, addr, stack } => {
-            assert_eq!((pc, addr.get()), (2, 0));
-            assert_eq!(stack, vec![2; STACK_SIZE]);
+            assert_eq!((pc.get(), addr.get()), (2, 0));
+            assert_eq!(stack, vec![ProgramCounter::new(2); STACK_SIZE]);
         }
         other => panic!("expected StackOverflow, got {other:?}"),
     }
@@ -201,20 +201,20 @@ fn unknown_opcode_reports_its_own_address() {
     let err = run_err(&[(0, &[0x6001u16, 0xF000])]);
     assert!(matches!(
         err,
-        CpuError::UnknownOpcode { opcode, pc: 2 } if opcode == Opcode::new(0xF000)
+        CpuError::UnknownOpcode { opcode, pc } if opcode == Opcode::new(0xF000) && pc.get() == 2
     ));
 }
 
 #[test]
 fn running_off_the_end_of_memory_is_pc_out_of_bounds() {
     let err = run_err(&[(0, &[call(0xFFE)]), (0xFFE, &[load(V0, 1)])]);
-    assert!(matches!(err, CpuError::PcOutOfBounds { pc: 0x1000 }));
+    assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0x1000));
 }
 
 #[test]
 fn odd_pc_on_the_last_byte_is_pc_out_of_bounds() {
     let err = run_err(&[(0, &[call(0xFFF)])]);
-    assert!(matches!(err, CpuError::PcOutOfBounds { pc: 0xFFF }));
+    assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0xFFF));
 }
 
 #[test]
@@ -257,12 +257,12 @@ fn step_runs_exactly_one_instruction() {
 
     c.step().unwrap();
     assert_eq!(c.get_register_value(V0), 5);
-    assert_eq!(c.pc, 2);
+    assert_eq!(c.pc.get(), 2);
     assert_eq!(c.state, CpuState::Running);
 
     c.step().unwrap();
     assert_eq!(c.get_register_value(V0), 8);
-    assert_eq!(c.pc, 4);
+    assert_eq!(c.pc.get(), 4);
     assert_eq!(c.state, CpuState::Running);
 }
 
@@ -292,11 +292,11 @@ fn step_through_call_and_return() {
     let mut c = cpu(&[(0, &[call(0x100), Halt]), (0x100, &[Return])]);
 
     c.step().unwrap();
-    assert_eq!(c.pc, 0x100);
+    assert_eq!(c.pc.get(), 0x100);
     assert_eq!(c.stack_ptr, 1);
 
     c.step().unwrap();
-    assert_eq!(c.pc, 2);
+    assert_eq!(c.pc.get(), 2);
     assert_eq!(c.stack_ptr, 0);
 
     c.step().unwrap();
@@ -306,7 +306,7 @@ fn step_through_call_and_return() {
 #[test]
 fn step_returns_errors() {
     let mut c = cpu(&[(0, &[Return])]);
-    assert!(matches!(c.step(), Err(CpuError::StackUnderflow { pc: 2 })));
+    assert!(matches!(c.step(), Err(CpuError::StackUnderflow { pc }) if pc.get() == 2));
     assert_eq!(c.state, CpuState::Running);
 }
 
@@ -347,7 +347,7 @@ fn run_goes_until_halt() {
 #[test]
 fn run_returns_errors() {
     let mut c = cpu(&[(0, &[load(V0, 1), Return])]);
-    assert!(matches!(c.run(), Err(CpuError::StackUnderflow { pc: 4 })));
+    assert!(matches!(c.run(), Err(CpuError::StackUnderflow { pc }) if pc.get() == 4));
 }
 
 #[test]
@@ -370,7 +370,7 @@ fn one_cycle_short_of_halt_is_limit_reached() {
     let mut c = cpu(&[(0, &count_to_three_then_halt())]);
     assert!(matches!(
         c.run_for(3),
-        Err(CpuError::CycleLimitReached { pc: 6 })
+        Err(CpuError::CycleLimitReached { pc }) if pc.get() == 6
     ));
     assert_eq!(c.get_register_value(V0), 3);
     assert_eq!(c.state, CpuState::Running);
@@ -381,7 +381,7 @@ fn zero_cycle_limit_runs_nothing() {
     let mut c = cpu(&[(0, &count_to_three_then_halt())]);
     assert!(matches!(
         c.run_for(0),
-        Err(CpuError::CycleLimitReached { pc: 0 })
+        Err(CpuError::CycleLimitReached { pc }) if pc.get() == 0
     ));
     assert_eq!(c.get_register_value(V0), 0);
 }

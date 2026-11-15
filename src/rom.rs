@@ -1,10 +1,12 @@
 mod error;
 
-pub use error::LoadError;
+pub use error::{LoadError, RomFileError};
+
+use std::{fs, path::Path};
 
 use crate::{
     isa::opcode::Opcode,
-    memory::{MEMORY_SIZE, Memory},
+    memory::{MEMORY_SIZE, Memory, PROGRAM_START},
 };
 
 #[derive(Debug)]
@@ -30,6 +32,28 @@ impl Rom {
             });
         }
         Ok(Self { segments })
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, LoadError> {
+        if bytes.is_empty() {
+            return Ok(Self { segments: vec![] });
+        }
+        let segment = Segment::from_bytes(usize::from(PROGRAM_START), bytes.to_vec())?;
+        Ok(Self {
+            segments: vec![segment],
+        })
+    }
+
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, RomFileError> {
+        let path = path.as_ref();
+        let bytes = fs::read(path).map_err(|source| RomFileError::Read {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        Rom::from_bytes(&bytes).map_err(|source| RomFileError::Load {
+            path: path.to_path_buf(),
+            source,
+        })
     }
 
     pub fn load_into_memory(&self, memory: &mut Memory) {
@@ -68,7 +92,10 @@ impl Segment {
             .iter()
             .flat_map(|&word| Into::<Opcode>::into(word).get().to_be_bytes())
             .collect();
+        Segment::from_bytes(start, bytes)
+    }
 
+    fn from_bytes(start: usize, bytes: Vec<u8>) -> Result<Self, LoadError> {
         start
             .checked_add(bytes.len())
             .filter(|&end| end <= MEMORY_SIZE)

@@ -15,11 +15,9 @@
   - Convert a nibble to a `Register` with a function that can't fail
   - `get_register_value` takes a `Register` and returns a plain `u8`
   - `Instruction` fields become `Register`, so a bad index won't compile
-- [ ] Load a ROM from a file
-  - Pick a file format: raw bytes at the start address, or our own segment format
-  - Parse the file into segments
-  - Add `Rom::from_segments`
-  - Take the file path on the command line
+- [x] Load a ROM from a file
+  - Raw bytes loaded at `PROGRAM_START`, the standard `.ch8` format (`Rom::from_bytes`, `Rom::from_file`)
+  - `cargo run -- <rom>` runs a ROM file; with no argument it runs the demo program
 - [ ] More opcodes
   - The original CHIP-8 has 34 opcodes (plus `0NNN`, which modern interpreters ignore). 5 are done.
   - Flow

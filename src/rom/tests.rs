@@ -176,3 +176,106 @@ fn error_display() {
         "Segment at 0x0fff (2 bytes) doesn't fit in memory"
     );
 }
+
+const START: usize = 0x200;
+const MAX_ROM_SIZE: usize = MEMORY_SIZE - START;
+
+fn loaded_bytes(rom: &Rom) -> [u8; MEMORY_SIZE] {
+    let mut memory = Memory::default();
+    rom.load_into_memory(&mut memory);
+    bytes(&memory)
+}
+
+#[test]
+fn from_bytes_loads_at_the_program_start() {
+    assert_eq!(usize::from(PROGRAM_START), START);
+    let mem = loaded_bytes(&Rom::from_bytes(&[0x60, 0x05, 0x00, 0x00]).unwrap());
+    assert_eq!(&mem[START..START + 4], &[0x60, 0x05, 0x00, 0x00]);
+    assert!(mem[..START].iter().all(|&b| b == 0));
+    assert!(mem[START + 4..].iter().all(|&b| b == 0));
+}
+
+#[test]
+fn from_bytes_accepts_an_odd_length() {
+    let mem = loaded_bytes(&Rom::from_bytes(&[0xAB, 0xCD, 0xEF]).unwrap());
+    assert_eq!(&mem[START..START + 4], &[0xAB, 0xCD, 0xEF, 0x00]);
+}
+
+#[test]
+fn from_bytes_with_no_bytes_loads_nothing() {
+    let mem = loaded_bytes(&Rom::from_bytes(&[]).unwrap());
+    assert_eq!(mem, [0u8; MEMORY_SIZE]);
+}
+
+#[test]
+fn from_bytes_fills_memory_up_to_the_end() {
+    let rom_bytes = [0x5A; MAX_ROM_SIZE];
+    let mem = loaded_bytes(&Rom::from_bytes(&rom_bytes).unwrap());
+    assert_eq!(&mem[START..], &rom_bytes[..]);
+}
+
+#[test]
+fn from_bytes_one_byte_too_big_is_out_of_bounds() {
+    assert!(matches!(
+        Rom::from_bytes(&[0; MAX_ROM_SIZE + 1]),
+        Err(LoadError::OutOfBounds {
+            addr: START,
+            byte_len
+        }) if byte_len == MAX_ROM_SIZE + 1
+    ));
+}
+
+struct TempRomFile(std::path::PathBuf);
+
+impl TempRomFile {
+    fn new(name: &str, contents: &[u8]) -> TempRomFile {
+        let path =
+            std::env::temp_dir().join(format!("chip8-emulator-{}-{name}.ch8", std::process::id()));
+        std::fs::write(&path, contents).unwrap();
+        TempRomFile(path)
+    }
+}
+
+impl Drop for TempRomFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+#[test]
+fn from_file_reads_raw_bytes() {
+    let file = TempRomFile::new("raw-bytes", &[0x12, 0x34, 0x56]);
+    let mem = loaded_bytes(&Rom::from_file(&file.0).unwrap());
+    assert_eq!(&mem[START..START + 3], &[0x12, 0x34, 0x56]);
+}
+
+#[test]
+fn from_file_missing_is_a_read_error_naming_the_path() {
+    let path = std::env::temp_dir().join("chip8-emulator-does-not-exist.ch8");
+    let err = Rom::from_file(&path).unwrap_err();
+    assert!(matches!(err, RomFileError::Read { .. }));
+    assert!(
+        err.to_string()
+            .starts_with(&format!("Couldn't read ROM file {}: ", path.display()))
+    );
+}
+
+#[test]
+fn from_file_too_big_is_a_load_error() {
+    let file = TempRomFile::new("too-big", &[0; MAX_ROM_SIZE + 1]);
+    let err = Rom::from_file(&file.0).unwrap_err();
+    assert!(matches!(
+        err,
+        RomFileError::Load {
+            source: LoadError::OutOfBounds { .. },
+            ..
+        }
+    ));
+    assert_eq!(
+        err.to_string(),
+        format!(
+            "Couldn't load ROM file {}: Segment at 0x0200 (3585 bytes) doesn't fit in memory",
+            file.0.display()
+        )
+    );
+}

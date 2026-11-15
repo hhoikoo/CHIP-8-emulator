@@ -33,13 +33,13 @@ impl TryFrom<u16> for Addr {
 
 impl From<Addr> for u16 {
     fn from(addr: Addr) -> u16 {
-        addr.0
+        addr.get()
     }
 }
 
 impl From<Addr> for usize {
     fn from(addr: Addr) -> usize {
-        usize::from(addr.0)
+        usize::from(addr.get())
     }
 }
 

@@ -1,11 +1,13 @@
-use super::{Cpu, CpuError, CpuState, ProgramCounter};
-use crate::isa::{addr::Addr, instruction::Instruction, register::Register};
+use super::{Cpu, CpuError, CpuState, JumpQuirk, ProgramCounter};
+use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {
         match instruction {
             Instruction::Halt => self.state = CpuState::Halt,
             Instruction::Return => self.ret()?,
+            Instruction::Jump { addr } => self.jump(addr),
+            Instruction::JumpWithOffset { addr } => self.jump_with_offset(addr),
             Instruction::Call { addr } => self.call(addr)?,
             Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
             Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
@@ -23,6 +25,22 @@ impl Cpu {
             }
             None => Err(CpuError::StackUnderflow { pc: self.pc }),
         }
+    }
+
+    fn jump(&mut self, addr: Addr) {
+        self.pc = ProgramCounter::from(addr);
+    }
+
+    fn jump_with_offset(&mut self, addr: Addr) {
+        let new_addr_value = match self.quirks.jump {
+            JumpQuirk::AddV0 => addr.get() + u16::from(self.registers[Register::V0]),
+            JumpQuirk::AddVx => {
+                let [register, nn] = addr.get().to_be_bytes();
+                let register = Register::from(Nibble::expect_new(register));
+                u16::from(nn) + u16::from(self.registers[register])
+            }
+        };
+        self.pc = ProgramCounter::from(new_addr_value);
     }
 
     fn call(&mut self, addr: Addr) -> Result<(), CpuError> {

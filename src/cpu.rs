@@ -1,9 +1,11 @@
 mod error;
 mod execute;
 mod program_counter;
+mod quirks;
 
 pub use error::CpuError;
 pub use program_counter::ProgramCounter;
+pub use quirks::{JumpQuirk, Quirks};
 
 use crate::{
     isa::{
@@ -25,6 +27,7 @@ pub struct Cpu {
     stack: [ProgramCounter; STACK_SIZE],
     stack_ptr: usize,
     state: CpuState,
+    quirks: Quirks,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,6 +38,10 @@ pub enum CpuState {
 
 impl Cpu {
     pub fn new(rom: &Rom) -> Self {
+        Self::with_quirks(rom, Quirks::default())
+    }
+
+    pub fn with_quirks(rom: &Rom, quirks: Quirks) -> Self {
         let mut memory = Memory::default();
         rom.load_into_memory(&mut memory);
 
@@ -45,6 +52,7 @@ impl Cpu {
             stack: [ProgramCounter::new(0); STACK_SIZE],
             stack_ptr: 0,
             state: CpuState::Running,
+            quirks,
         }
     }
 

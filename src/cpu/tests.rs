@@ -26,6 +26,18 @@ fn call(addr: u16) -> Instruction {
     }
 }
 
+fn jump(addr: u16) -> Instruction {
+    Jump {
+        addr: Addr::new(addr).unwrap(),
+    }
+}
+
+fn jump_with_offset(addr: u16) -> Instruction {
+    JumpWithOffset {
+        addr: Addr::new(addr).unwrap(),
+    }
+}
+
 const CYCLE_LIMIT: usize = 10_000;
 const START: usize = 0x200;
 
@@ -35,6 +47,10 @@ fn add_twice_addr() -> usize {
 
 fn cpu<T: Copy + Into<Opcode>>(segs: &[(usize, &[T])]) -> Cpu {
     Cpu::new(&Rom::new(segs).unwrap())
+}
+
+fn cpu_with_quirks<T: Copy + Into<Opcode>>(segs: &[(usize, &[T])], quirks: Quirks) -> Cpu {
+    Cpu::with_quirks(&Rom::new(segs).unwrap(), quirks)
 }
 
 #[test]
@@ -229,6 +245,80 @@ fn running_off_the_end_of_memory_is_pc_out_of_bounds() {
 fn odd_pc_on_the_last_byte_is_pc_out_of_bounds() {
     let err = run_err(&[(START, &[call(0xFFF)])]);
     assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0xFFF));
+}
+
+#[test]
+fn new_cpu_uses_the_original_quirks() {
+    let c = cpu(&[(START, &[Halt])]);
+    assert_eq!(c.quirks, Quirks::default());
+    assert_eq!(c.quirks.jump, JumpQuirk::AddV0);
+}
+
+#[test]
+fn jump_skips_the_instructions_in_between() {
+    let mut c = cpu(&[
+        (START, &[jump(0x206), load(V0, 1), Halt]),
+        (0x206, &[load(V1, 7), Halt]),
+    ]);
+    c.run_for(CYCLE_LIMIT).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+    assert_eq!(c.get_register_value(V1), 7);
+}
+
+#[test]
+fn jump_to_itself_runs_until_the_cycle_limit() {
+    let mut c = cpu(&[(START, &[jump(0x200)])]);
+    let err = c.run_for(10).unwrap_err();
+    assert!(matches!(err, CpuError::CycleLimitReached { pc } if pc.get() == 0x200));
+}
+
+fn va_after_jump_with_offset(quirks: Quirks) -> u8 {
+    let main = [load(V0, 0x04), load(V1, 0x10), jump_with_offset(0x120)];
+    let target_with_v0 = [load(VA, 1), Halt];
+    let target_with_v1 = [load(VA, 2), Halt];
+    let mut c = cpu_with_quirks(
+        &[
+            (START, &main),
+            (0x124, &target_with_v0),
+            (0x030, &target_with_v1),
+        ],
+        quirks,
+    );
+    c.run_for(CYCLE_LIMIT).unwrap();
+    c.get_register_value(VA)
+}
+
+#[test]
+fn jump_with_offset_adds_v0_by_default() {
+    assert_eq!(va_after_jump_with_offset(Quirks::default()), 1);
+}
+
+#[test]
+fn jump_with_offset_adds_vx_with_the_vx_quirk() {
+    let quirks = Quirks {
+        jump: JumpQuirk::AddVx,
+    };
+    assert_eq!(va_after_jump_with_offset(quirks), 2);
+}
+
+#[test]
+fn jump_with_offset_past_the_end_of_memory_is_pc_out_of_bounds() {
+    let err = run_err(&[(START, &[load(V0, 0xFF), jump_with_offset(0xFFF)])]);
+    assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0x10FE));
+}
+
+#[test]
+fn jump_with_offset_with_the_vx_quirk_adds_vx_to_the_low_byte() {
+    let quirks = Quirks {
+        jump: JumpQuirk::AddVx,
+    };
+    let mut c = cpu_with_quirks(
+        &[(START, &[load(VF, 0xFF), jump_with_offset(0xFFF)])],
+        quirks,
+    );
+    c.step().unwrap();
+    c.step().unwrap();
+    assert_eq!(c.pc.get(), 0x1FE);
 }
 
 #[test]

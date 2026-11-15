@@ -12,10 +12,12 @@ Currently supported instructions:
 | --- | --- |
 | `0000` | halt (our own stop instruction) |
 | `00EE` | return |
+| `1NNN` | jump to `NNN` |
 | `2NNN` | call `NNN` |
 | `6XNN` | `VX = NN` |
 | `7XNN` | `VX += NN` |
 | `8XY4` | `VX += VY`, carry in `VF` |
+| `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
 
 The rest, and the planned assembler, are in [TODO.md](TODO.md).
 

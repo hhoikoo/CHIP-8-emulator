@@ -29,8 +29,8 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - Flow
       - [x] `00EE` return
       - [x] `2NNN` call `NNN`
-      - [ ] `1NNN` jump to `NNN`
-      - [ ] `BNNN` jump to `NNN + V0`
+      - [x] `1NNN` jump to `NNN`
+      - [x] `BNNN` jump to `NNN + V0`
     - Skips
       - [ ] `3XNN` skip next if `VX == NN`
       - [ ] `4XNN` skip next if `VX != NN`
@@ -48,9 +48,10 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [ ] `8XY6` shift right, bit shifted out goes to `VF`
       - [ ] `8XY7` `VX = VY - VX`, `VF` set if no borrow
       - [ ] `8XYE` shift left, bit shifted out goes to `VF`
-    - Quirks
+    - Quirks: configurable through `Quirks` (`Cpu::with_quirks`), original COSMAC VIP behavior by default
       - [ ] Decide the shift quirk: `8XY6`/`8XYE` shift `VY` into `VX` (original) or shift `VX` in place (CHIP-48, SUPER-CHIP)
-      - [ ] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
+      - [x] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
+        - Configurable with `Quirks { jump: JumpQuirk }`, `AddV0` by default
       - [ ] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it
     - [ ] Remove the custom `0x0000` halt (after `1NNN`)
       - [ ] Decide what `0NNN` does: ignore it like modern interpreters, or report it as an unknown opcode
@@ -105,7 +106,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [ ] `EXA1` skip next if key `VX` is not pressed
     - [ ] `FX0A` wait for a key press and release, store it in `VX`
   - [ ] Group 8: quirk settings and the remaining real-ROM tests
-    - [ ] Decide whether to support more than one interpreter's quirks; if so, add a `Quirks` struct passed to `Cpu::new`
+    - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)
     - [ ] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
       - Needs: Groups 1, 2 and 4
     - [ ] Real-ROM test: `4-flags.ch8` (`VF` as input and output)

@@ -13,6 +13,8 @@ use crate::isa::{
 pub enum Instruction {
     Halt,
     Return,
+    Jump { addr: Addr },
+    JumpWithOffset { addr: Addr },
     Call { addr: Addr },
     LoadImmediate { x: Register, nn: u8 },
     AddImmediate { x: Register, nn: u8 },
@@ -26,6 +28,14 @@ impl TryFrom<Opcode> for Instruction {
         match opcode.nibbles() {
             [0x0, 0x0, 0x0, 0x0] => Ok(Self::Halt),
             [0x0, 0x0, 0xE, 0xE] => Ok(Self::Return),
+            [0x1, ..] => {
+                let Nnn { addr, .. } = opcode.into();
+                Ok(Self::Jump { addr })
+            }
+            [0xB, ..] => {
+                let Nnn { addr, .. } = opcode.into();
+                Ok(Self::JumpWithOffset { addr })
+            }
             [0x2, ..] => {
                 let Nnn { addr, .. } = opcode.into();
                 Ok(Self::Call { addr })
@@ -52,30 +62,34 @@ impl Instruction {
         match self {
             Self::Halt => Opcode::new(0x0000),
             Self::Return => Opcode::new(0x00EE),
-            Self::Call { addr } => Nnn {
+            Self::Jump { addr } => Opcode::from(Nnn {
+                prefix: Nibble::expect_new(0x1),
+                addr,
+            }),
+            Self::JumpWithOffset { addr } => Opcode::from(Nnn {
+                prefix: Nibble::expect_new(0xB),
+                addr,
+            }),
+            Self::Call { addr } => Opcode::from(Nnn {
                 prefix: Nibble::expect_new(0x2),
                 addr,
-            }
-            .into(),
-            Self::LoadImmediate { x, nn } => Xnn {
+            }),
+            Self::LoadImmediate { x, nn } => Opcode::from(Xnn {
                 prefix: Nibble::expect_new(0x6),
                 x,
                 nn,
-            }
-            .into(),
-            Self::AddImmediate { x, nn } => Xnn {
+            }),
+            Self::AddImmediate { x, nn } => Opcode::from(Xnn {
                 prefix: Nibble::expect_new(0x7),
                 x,
                 nn,
-            }
-            .into(),
-            Self::AddWithCarry { x, y } => Xyn {
+            }),
+            Self::AddWithCarry { x, y } => Opcode::from(Xyn {
                 prefix: Nibble::expect_new(0x8),
                 x,
                 y,
                 n: Nibble::expect_new(0x4),
-            }
-            .into(),
+            }),
         }
     }
 }

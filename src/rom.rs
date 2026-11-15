@@ -4,7 +4,7 @@ pub use error::LoadError;
 
 use std::ops::Range;
 
-use crate::{constant::MEMORY_SIZE, isa::opcode::Opcode};
+use crate::{isa::opcode::Opcode, memory::MEMORY_SIZE};
 
 #[derive(Debug)]
 pub struct Rom {

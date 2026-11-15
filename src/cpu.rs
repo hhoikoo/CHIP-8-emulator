@@ -4,12 +4,12 @@ mod execute;
 pub use error::CpuError;
 
 use crate::{
-    constant::MEMORY_SIZE,
     isa::{
         instruction::Instruction,
         opcode::Opcode,
         register::{Register, Registers},
     },
+    memory::MEMORY_SIZE,
     rom::Rom,
 };
 

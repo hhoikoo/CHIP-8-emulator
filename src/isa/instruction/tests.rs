@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 5 * 0x1000 + 0x100;
+const DECODABLE_OPCODE_COUNT: usize = 1 + 7 * 0x1000 + 3 * 0x100;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -20,6 +20,22 @@ fn decodes_each_instruction() {
         Ok(Instruction::JumpWithOffset { addr: addr(0xABC) })
     );
     assert_eq!(decode(0x2ABC), Ok(Instruction::Call { addr: addr(0xABC) }));
+    assert_eq!(
+        decode(0x3A05),
+        Ok(Instruction::SkipIfEqualImmediate { x: VA, nn: 0x05 })
+    );
+    assert_eq!(
+        decode(0x4A05),
+        Ok(Instruction::SkipIfNotEqualImmediate { x: VA, nn: 0x05 })
+    );
+    assert_eq!(
+        decode(0x5120),
+        Ok(Instruction::SkipIfEqual { x: V1, y: V2 })
+    );
+    assert_eq!(
+        decode(0x9120),
+        Ok(Instruction::SkipIfNotEqual { x: V1, y: V2 })
+    );
     assert_eq!(
         decode(0x6A05),
         Ok(Instruction::LoadImmediate { x: VA, nn: 0x05 })
@@ -60,7 +76,7 @@ fn operand_extremes() {
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
-        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x8120, 0x8125, 0xF000,
+        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8120, 0x8125, 0xF000,
     ] {
         assert_eq!(
             decode(opcode),
@@ -98,9 +114,13 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0x00EE => Some(Instruction::Return),
             0x1000..=0x1FFF => Some(Instruction::Jump { addr }),
             0x2000..=0x2FFF => Some(Instruction::Call { addr }),
+            0x3000..=0x3FFF => Some(Instruction::SkipIfEqualImmediate { x, nn }),
+            0x4000..=0x4FFF => Some(Instruction::SkipIfNotEqualImmediate { x, nn }),
+            0x5000..=0x5FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfEqual { x, y }),
             0x6000..=0x6FFF => Some(Instruction::LoadImmediate { x, nn }),
             0x7000..=0x7FFF => Some(Instruction::AddImmediate { x, nn }),
             0x8000..=0x8FFF if opcode & 0xF == 4 => Some(Instruction::AddWithCarry { x, y }),
+            0x9000..=0x9FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfNotEqual { x, y }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
             _ => None,
         };
@@ -135,6 +155,16 @@ fn encodes_each_instruction() {
         (Instruction::Jump { addr: addr(0xABC) }, 0x1ABC),
         (Instruction::JumpWithOffset { addr: addr(0xABC) }, 0xBABC),
         (Instruction::Call { addr: addr(0xABC) }, 0x2ABC),
+        (
+            Instruction::SkipIfEqualImmediate { x: VA, nn: 0x05 },
+            0x3A05,
+        ),
+        (
+            Instruction::SkipIfNotEqualImmediate { x: VA, nn: 0x05 },
+            0x4A05,
+        ),
+        (Instruction::SkipIfEqual { x: V1, y: V2 }, 0x5120),
+        (Instruction::SkipIfNotEqual { x: V1, y: V2 }, 0x9120),
         (Instruction::LoadImmediate { x: VA, nn: 0x05 }, 0x6A05),
         (Instruction::AddImmediate { x: VB, nn: 0x7F }, 0x7B7F),
         (Instruction::AddWithCarry { x: V1, y: V2 }, 0x8124),

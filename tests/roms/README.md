@@ -11,6 +11,7 @@ Tiny `.ch8` files built only from the opcodes the emulator supports. Their sourc
 | ROM | Cycles | Outcome |
 |---|---|---|
 | `jump` | 2 | `V0 = 2`, after jumping over `V0 = 1` |
+| `skips` | 4 | `V1 = 0` (skipped), `V2 = 1` (not skipped) |
 | `zero_padding_is_an_unknown_opcode` | 2 | `V0 = 1`, then fails: zeroed memory decodes as unknown opcode `0x0000` |
 | `load_and_add` | 2 | `V0 = 8` |
 | `add_with_carry` | 3 | `V0 = 0x10`, `VF = 1` |

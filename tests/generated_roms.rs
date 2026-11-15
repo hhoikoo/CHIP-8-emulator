@@ -83,6 +83,21 @@ fn generated_roms() -> Vec<GeneratedRom> {
             },
         },
         GeneratedRom {
+            name: "skips",
+            words: encode(&[
+                LoadImmediate { x: V0, nn: 5 },
+                SkipIfEqualImmediate { x: V0, nn: 5 },
+                LoadImmediate { x: V1, nn: 1 },
+                SkipIfNotEqualImmediate { x: V0, nn: 5 },
+                LoadImmediate { x: V2, nn: 1 },
+                jump(0x20A),
+            ]),
+            cycles: 4,
+            outcome: Outcome::Loops {
+                registers: &[(V0, 5), (V1, 0), (V2, 1)],
+            },
+        },
+        GeneratedRom {
             name: "zero_padding_is_an_unknown_opcode",
             words: encode(&[LoadImmediate { x: V0, nn: 1 }]),
             cycles: 2,

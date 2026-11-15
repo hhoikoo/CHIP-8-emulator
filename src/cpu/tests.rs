@@ -474,3 +474,62 @@ fn the_main_program_reaches_its_loop_after_ten_steps() {
     assert_eq!(c.get_register_value(V0), 45);
     assert_eq!(c.pc.get(), 0x208);
 }
+
+fn skipped(setup: &[Instruction], skip: Instruction) -> bool {
+    let mut program = setup.to_vec();
+    program.extend([skip, load(VE, 1), load(VD, 1)]);
+    let mut c = cpu(&[(START, &looping(START, &program))]);
+    run_cycles(&mut c).unwrap();
+    assert_eq!(
+        c.get_register_value(VD),
+        1,
+        "the instruction after the skip runs"
+    );
+    c.get_register_value(VE) == 0
+}
+
+#[test]
+fn skip_if_equal_immediate() {
+    let setup = [load(V3, 7)];
+    assert!(skipped(&setup, SkipIfEqualImmediate { x: V3, nn: 7 }));
+    assert!(!skipped(&setup, SkipIfEqualImmediate { x: V3, nn: 8 }));
+}
+
+#[test]
+fn skip_if_not_equal_immediate() {
+    let setup = [load(V3, 7)];
+    assert!(skipped(&setup, SkipIfNotEqualImmediate { x: V3, nn: 8 }));
+    assert!(!skipped(&setup, SkipIfNotEqualImmediate { x: V3, nn: 7 }));
+}
+
+#[test]
+fn skip_if_equal() {
+    let equal = [load(V3, 7), load(V4, 7)];
+    let different = [load(V3, 7), load(V4, 8)];
+    assert!(skipped(&equal, SkipIfEqual { x: V3, y: V4 }));
+    assert!(!skipped(&different, SkipIfEqual { x: V3, y: V4 }));
+}
+
+#[test]
+fn skip_if_not_equal() {
+    let equal = [load(V3, 7), load(V4, 7)];
+    let different = [load(V3, 7), load(V4, 8)];
+    assert!(skipped(&different, SkipIfNotEqual { x: V3, y: V4 }));
+    assert!(!skipped(&equal, SkipIfNotEqual { x: V3, y: V4 }));
+}
+
+#[test]
+fn skip_compares_the_named_registers() {
+    let setup = [load(V3, 7), load(V4, 8), load(V5, 7)];
+    assert!(skipped(&setup, SkipIfEqual { x: V3, y: V5 }));
+    assert!(!skipped(&setup, SkipIfEqual { x: V3, y: V4 }));
+}
+
+#[test]
+fn skip_on_the_last_instruction_is_pc_out_of_bounds() {
+    let err = run_err(&[
+        (START, &[jump(0xFFE)]),
+        (0xFFE, &[SkipIfEqualImmediate { x: V0, nn: 0 }]),
+    ]);
+    assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0x1002));
+}

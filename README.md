@@ -13,9 +13,13 @@ Currently supported instructions:
 | `00EE` | return |
 | `1NNN` | jump to `NNN` |
 | `2NNN` | call `NNN` |
+| `3XNN` | skip next if `VX == NN` |
+| `4XNN` | skip next if `VX != NN` |
+| `5XY0` | skip next if `VX == VY` |
 | `6XNN` | `VX = NN` |
 | `7XNN` | `VX += NN` |
 | `8XY4` | `VX += VY`, carry in `VF` |
+| `9XY0` | skip next if `VX != VY` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
 
 The rest, and the planned assembler, are in [TODO.md](TODO.md).

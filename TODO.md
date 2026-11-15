@@ -32,10 +32,10 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [x] `1NNN` jump to `NNN`
       - [x] `BNNN` jump to `NNN + V0`
     - Skips
-      - [ ] `3XNN` skip next if `VX == NN`
-      - [ ] `4XNN` skip next if `VX != NN`
-      - [ ] `5XY0` skip next if `VX == VY`
-      - [ ] `9XY0` skip next if `VX != VY`
+      - [x] `3XNN` skip next if `VX == NN`
+      - [x] `4XNN` skip next if `VX != NN`
+      - [x] `5XY0` skip next if `VX == VY`
+      - [x] `9XY0` skip next if `VX != VY`
     - Registers
       - [x] `6XNN` `VX = NN`
       - [x] `7XNN` `VX += NN`

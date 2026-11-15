@@ -18,6 +18,10 @@ pub enum Instruction {
     LoadImmediate { x: Register, nn: u8 },
     AddImmediate { x: Register, nn: u8 },
     AddWithCarry { x: Register, y: Register },
+    SkipIfEqualImmediate { x: Register, nn: u8 },
+    SkipIfNotEqualImmediate { x: Register, nn: u8 },
+    SkipIfEqual { x: Register, y: Register },
+    SkipIfNotEqual { x: Register, y: Register },
 }
 
 const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
@@ -28,6 +32,11 @@ const ADD_IMMEDIATE: Nibble = Nibble::expect_new(0x7);
 const REGISTER_OP: Nibble = Nibble::expect_new(0x8);
 const ADD_WITH_CARRY: Nibble = Nibble::expect_new(0x4);
 const JUMP_WITH_OFFSET: Nibble = Nibble::expect_new(0xB);
+const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
+const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
+const SKIP_IF_EQUAL: Nibble = Nibble::expect_new(0x5);
+const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
+const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
 
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
@@ -45,6 +54,10 @@ impl TryFrom<Opcode> for Instruction {
             [ADD_IMMEDIATE, ..] => Ok(Self::AddImmediate { x, nn }),
             [REGISTER_OP, _, _, ADD_WITH_CARRY] => Ok(Self::AddWithCarry { x, y }),
             [JUMP_WITH_OFFSET, ..] => Ok(Self::JumpWithOffset { addr }),
+            [SKIP_IF_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfEqualImmediate { x, nn }),
+            [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
+            [SKIP_IF_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfEqual { x, y }),
+            [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }
@@ -72,6 +85,10 @@ impl Instruction {
             Self::AddImmediate { x, nn } => xnn(ADD_IMMEDIATE, x, nn),
             Self::AddWithCarry { x, y } => xyn(REGISTER_OP, x, y, ADD_WITH_CARRY),
             Self::JumpWithOffset { addr } => nnn(JUMP_WITH_OFFSET, addr),
+            Self::SkipIfEqualImmediate { x, nn } => xnn(SKIP_IF_EQUAL_IMMEDIATE, x, nn),
+            Self::SkipIfNotEqualImmediate { x, nn } => xnn(SKIP_IF_NOT_EQUAL_IMMEDIATE, x, nn),
+            Self::SkipIfEqual { x, y } => xyn(SKIP_IF_EQUAL, x, y, LAST_ZERO),
+            Self::SkipIfNotEqual { x, y } => xyn(SKIP_IF_NOT_EQUAL, x, y, LAST_ZERO),
         }
     }
 }

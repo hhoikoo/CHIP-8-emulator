@@ -11,6 +11,12 @@ impl Cpu {
             Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
             Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
             Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
+            Instruction::SkipIfEqualImmediate { x, nn } => self.skip_if_equal_immediate(x, nn),
+            Instruction::SkipIfNotEqualImmediate { x, nn } => {
+                self.skip_if_not_equal_immediate(x, nn)
+            }
+            Instruction::SkipIfEqual { x, y } => self.skip_if_equal(x, y),
+            Instruction::SkipIfNotEqual { x, y } => self.skip_if_not_equal(x, y),
         }
         Ok(())
     }
@@ -73,5 +79,27 @@ impl Cpu {
         let (val, overflow) = arg1.overflowing_add(arg2);
         self.registers[x] = val;
         self.registers[Register::VF] = u8::from(overflow);
+    }
+
+    fn skip_if_equal_immediate(&mut self, x: Register, nn: u8) {
+        self.skip_if(self.registers[x] == nn);
+    }
+
+    fn skip_if_not_equal_immediate(&mut self, x: Register, nn: u8) {
+        self.skip_if(self.registers[x] != nn);
+    }
+
+    fn skip_if_equal(&mut self, x: Register, y: Register) {
+        self.skip_if(self.registers[x] == self.registers[y]);
+    }
+
+    fn skip_if_not_equal(&mut self, x: Register, y: Register) {
+        self.skip_if(self.registers[x] != self.registers[y]);
+    }
+
+    fn skip_if(&mut self, skip: bool) {
+        if skip {
+            self.pc.advance();
+        }
     }
 }

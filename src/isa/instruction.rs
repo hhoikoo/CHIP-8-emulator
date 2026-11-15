@@ -2,7 +2,11 @@ mod error;
 
 pub use error::UnknownOpcodeError;
 
-use crate::isa::{addr::Addr, opcode::Opcode, register::Register};
+use crate::isa::{
+    addr::Addr,
+    opcode::{Nnn, Opcode, Xnn, Xyn},
+    register::Register,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
@@ -19,21 +23,24 @@ impl TryFrom<Opcode> for Instruction {
 
     fn try_from(opcode: Opcode) -> Result<Self, UnknownOpcodeError> {
         match opcode.nibbles() {
-            (0x0, 0x0, 0x0, 0x0) => Ok(Self::Halt),
-            (0x0, 0x0, 0xE, 0xE) => Ok(Self::Return),
-            (0x2, _, _, _) => Ok(Self::Call { addr: opcode.nnn() }),
-            (0x6, _, _, _) => Ok(Self::LoadImmediate {
-                x: opcode.x(),
-                nn: opcode.nn(),
-            }),
-            (0x7, _, _, _) => Ok(Self::AddImmediate {
-                x: opcode.x(),
-                nn: opcode.nn(),
-            }),
-            (0x8, _, _, 0x4) => Ok(Self::AddWithCarry {
-                x: opcode.x(),
-                y: opcode.y(),
-            }),
+            [0x0, 0x0, 0x0, 0x0] => Ok(Self::Halt),
+            [0x0, 0x0, 0xE, 0xE] => Ok(Self::Return),
+            [0x2, ..] => {
+                let Nnn { addr, .. } = opcode.into();
+                Ok(Self::Call { addr })
+            }
+            [0x6, ..] => {
+                let Xnn { x, nn, .. } = opcode.into();
+                Ok(Self::LoadImmediate { x, nn })
+            }
+            [0x7, ..] => {
+                let Xnn { x, nn, .. } = opcode.into();
+                Ok(Self::AddImmediate { x, nn })
+            }
+            [0x8, _, _, 0x4] => {
+                let Xyn { x, y, .. } = opcode.into();
+                Ok(Self::AddWithCarry { x, y })
+            }
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }

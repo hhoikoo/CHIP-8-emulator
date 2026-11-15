@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::isa::{addr::Addr, register::Register};
+use crate::isa::{addr::Addr, nibble::Nibble, register::Register};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Opcode(u16);
@@ -14,40 +14,14 @@ impl Opcode {
         self.0
     }
 
-    pub const fn nibbles(self) -> (u8, u8, u8, u8) {
+    pub const fn nibbles(self) -> [u8; 4] {
         let value = self.get();
-        (
+        [
             (value >> 12) as u8 & 0xF,
             (value >> 8) as u8 & 0xF,
             (value >> 4) as u8 & 0xF,
             value as u8 & 0xF,
-        )
-    }
-
-    pub fn x(self) -> Register {
-        let (_, x, _, _) = self.nibbles();
-        Register::try_from(x).expect("a 4-bit field always names a register")
-    }
-
-    pub fn y(self) -> Register {
-        let (_, _, y, _) = self.nibbles();
-        Register::try_from(y).expect("a 4-bit field always names a register")
-    }
-
-    pub const fn n(self) -> u8 {
-        let (_, _, _, n) = self.nibbles();
-        n
-    }
-
-    pub const fn nn(self) -> u8 {
-        let (_, _, y, n) = self.nibbles();
-        y << 4 | n
-    }
-
-    pub fn nnn(self) -> Addr {
-        let (_, x, y, n) = self.nibbles();
-        let nnn = (x as u16) << 8 | (y as u16) << 4 | n as u16;
-        Addr::new(nnn).expect("a 12-bit field always fits in an Addr")
+        ]
     }
 }
 
@@ -67,6 +41,79 @@ impl From<Opcode> for u16 {
 impl fmt::LowerHex for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Nnn {
+    pub prefix: Nibble,
+    pub addr: Addr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Xnn {
+    pub prefix: Nibble,
+    pub x: Register,
+    pub nn: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Xyn {
+    pub prefix: Nibble,
+    pub x: Register,
+    pub y: Register,
+    pub n: Nibble,
+}
+
+impl From<Opcode> for Nnn {
+    fn from(opcode: Opcode) -> Nnn {
+        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        let addr = u16::from(x) << 8 | u16::from(y) << 4 | u16::from(n);
+        Nnn {
+            prefix,
+            addr: Addr::new(addr).expect("a 12-bit field always fits in an Addr"),
+        }
+    }
+}
+
+impl From<Nnn> for Opcode {
+    fn from(Nnn { prefix, addr }: Nnn) -> Opcode {
+        Opcode::new(u16::from(prefix) << 12 | addr.get())
+    }
+}
+
+impl From<Opcode> for Xnn {
+    fn from(opcode: Opcode) -> Xnn {
+        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        Xnn {
+            prefix,
+            x: Register::from(x),
+            nn: u8::from(y) << 4 | u8::from(n),
+        }
+    }
+}
+
+impl From<Xnn> for Opcode {
+    fn from(Xnn { prefix, x, nn }: Xnn) -> Opcode {
+        Opcode::new(u16::from(prefix) << 12 | u16::from(x) << 8 | u16::from(nn))
+    }
+}
+
+impl From<Opcode> for Xyn {
+    fn from(opcode: Opcode) -> Xyn {
+        let [prefix, x, y, n] = opcode.nibbles().map(Nibble::expect_new);
+        Xyn {
+            prefix,
+            x: Register::from(x),
+            y: Register::from(y),
+            n,
+        }
+    }
+}
+
+impl From<Xyn> for Opcode {
+    fn from(Xyn { prefix, x, y, n }: Xyn) -> Opcode {
+        Opcode::new(u16::from(prefix) << 12 | u16::from(x) << 8 | u16::from(y) << 4 | u16::from(n))
     }
 }
 

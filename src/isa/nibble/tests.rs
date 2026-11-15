@@ -40,3 +40,22 @@ fn out_of_range_error_message() {
         "Nibble 0x1a is out of range (expected 0x0 to 0xF)"
     );
 }
+
+#[test]
+fn expect_new_accepts_0x0_to_0xf() {
+    for value in 0x0..=0xF {
+        assert_eq!(Nibble::expect_new(value).get(), value);
+    }
+}
+
+#[test]
+#[should_panic(expected = "value must be 0x0 to 0xF")]
+fn expect_new_panics_above_0xf() {
+    Nibble::expect_new(0x10);
+}
+
+#[test]
+fn expect_new_works_in_const_context() {
+    const PREFIX: Nibble = Nibble::expect_new(0x6);
+    assert_eq!(PREFIX.get(), 0x6);
+}

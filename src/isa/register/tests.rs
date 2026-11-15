@@ -20,6 +20,23 @@ fn try_from_u8_maps_each_number_to_its_register() {
 }
 
 #[test]
+fn try_from_agrees_with_new_for_every_u8() {
+    for value in 0..=u8::MAX {
+        assert_eq!(
+            Register::try_from(value),
+            Register::new(value),
+            "{value:#04x}"
+        );
+    }
+}
+
+#[test]
+fn new_works_in_const_context() {
+    const RESULT: Result<Register, RegisterOutOfRange> = Register::new(0xA);
+    assert_eq!(RESULT, Ok(VA));
+}
+
+#[test]
 fn try_from_u8_rejects_16_and_above() {
     for value in 0x10..=u8::MAX {
         assert_eq!(

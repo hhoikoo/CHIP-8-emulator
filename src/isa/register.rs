@@ -27,10 +27,8 @@ pub enum Register {
     VF = 0xF,
 }
 
-impl TryFrom<u8> for Register {
-    type Error = RegisterOutOfRange;
-
-    fn try_from(value: u8) -> Result<Self, RegisterOutOfRange> {
+impl Register {
+    pub const fn new(value: u8) -> Result<Register, RegisterOutOfRange> {
         match value {
             0x0 => Ok(Register::V0),
             0x1 => Ok(Register::V1),
@@ -50,6 +48,14 @@ impl TryFrom<u8> for Register {
             0xF => Ok(Register::VF),
             _ => Err(RegisterOutOfRange { value }),
         }
+    }
+}
+
+impl TryFrom<u8> for Register {
+    type Error = RegisterOutOfRange;
+
+    fn try_from(value: u8) -> Result<Self, RegisterOutOfRange> {
+        Register::new(value)
     }
 }
 

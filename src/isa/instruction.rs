@@ -21,75 +21,61 @@ pub enum Instruction {
     AddWithCarry { x: Register, y: Register },
 }
 
+const HALT: Opcode = Opcode::new(0x0000);
+const RETURN: Opcode = Opcode::new(0x00EE);
+const JUMP: Nibble = Nibble::expect_new(0x1);
+const CALL: Nibble = Nibble::expect_new(0x2);
+const LOAD_IMMEDIATE: Nibble = Nibble::expect_new(0x6);
+const ADD_IMMEDIATE: Nibble = Nibble::expect_new(0x7);
+const REGISTER_OP: Nibble = Nibble::expect_new(0x8);
+const ADD_WITH_CARRY: Nibble = Nibble::expect_new(0x4);
+const JUMP_WITH_OFFSET: Nibble = Nibble::expect_new(0xB);
+
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
 
     fn try_from(opcode: Opcode) -> Result<Self, UnknownOpcodeError> {
-        match opcode.nibbles() {
-            [0x0, 0x0, 0x0, 0x0] => Ok(Self::Halt),
-            [0x0, 0x0, 0xE, 0xE] => Ok(Self::Return),
-            [0x1, ..] => {
-                let Nnn { addr, .. } = opcode.into();
-                Ok(Self::Jump { addr })
-            }
-            [0xB, ..] => {
-                let Nnn { addr, .. } = opcode.into();
-                Ok(Self::JumpWithOffset { addr })
-            }
-            [0x2, ..] => {
-                let Nnn { addr, .. } = opcode.into();
-                Ok(Self::Call { addr })
-            }
-            [0x6, ..] => {
-                let Xnn { x, nn, .. } = opcode.into();
-                Ok(Self::LoadImmediate { x, nn })
-            }
-            [0x7, ..] => {
-                let Xnn { x, nn, .. } = opcode.into();
-                Ok(Self::AddImmediate { x, nn })
-            }
-            [0x8, _, _, 0x4] => {
-                let Xyn { x, y, .. } = opcode.into();
-                Ok(Self::AddWithCarry { x, y })
-            }
+        let Nnn { prefix, addr } = opcode.into();
+        let Xnn { x, nn, .. } = opcode.into();
+        let Xyn { y, n, .. } = opcode.into();
+
+        match (opcode, prefix, n) {
+            (HALT, ..) => Ok(Self::Halt),
+            (RETURN, ..) => Ok(Self::Return),
+            (_, JUMP, _) => Ok(Self::Jump { addr }),
+            (_, CALL, _) => Ok(Self::Call { addr }),
+            (_, LOAD_IMMEDIATE, _) => Ok(Self::LoadImmediate { x, nn }),
+            (_, ADD_IMMEDIATE, _) => Ok(Self::AddImmediate { x, nn }),
+            (_, REGISTER_OP, ADD_WITH_CARRY) => Ok(Self::AddWithCarry { x, y }),
+            (_, JUMP_WITH_OFFSET, _) => Ok(Self::JumpWithOffset { addr }),
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }
 }
 
+fn nnn(prefix: Nibble, addr: Addr) -> Opcode {
+    Nnn { prefix, addr }.into()
+}
+
+fn xnn(prefix: Nibble, x: Register, nn: u8) -> Opcode {
+    Xnn { prefix, x, nn }.into()
+}
+
+fn xyn(prefix: Nibble, x: Register, y: Register, n: Nibble) -> Opcode {
+    Xyn { prefix, x, y, n }.into()
+}
+
 impl Instruction {
     pub fn encode(self) -> Opcode {
         match self {
-            Self::Halt => Opcode::new(0x0000),
-            Self::Return => Opcode::new(0x00EE),
-            Self::Jump { addr } => Opcode::from(Nnn {
-                prefix: Nibble::expect_new(0x1),
-                addr,
-            }),
-            Self::JumpWithOffset { addr } => Opcode::from(Nnn {
-                prefix: Nibble::expect_new(0xB),
-                addr,
-            }),
-            Self::Call { addr } => Opcode::from(Nnn {
-                prefix: Nibble::expect_new(0x2),
-                addr,
-            }),
-            Self::LoadImmediate { x, nn } => Opcode::from(Xnn {
-                prefix: Nibble::expect_new(0x6),
-                x,
-                nn,
-            }),
-            Self::AddImmediate { x, nn } => Opcode::from(Xnn {
-                prefix: Nibble::expect_new(0x7),
-                x,
-                nn,
-            }),
-            Self::AddWithCarry { x, y } => Opcode::from(Xyn {
-                prefix: Nibble::expect_new(0x8),
-                x,
-                y,
-                n: Nibble::expect_new(0x4),
-            }),
+            Self::Halt => HALT,
+            Self::Return => RETURN,
+            Self::Jump { addr } => nnn(JUMP, addr),
+            Self::Call { addr } => nnn(CALL, addr),
+            Self::LoadImmediate { x, nn } => xnn(LOAD_IMMEDIATE, x, nn),
+            Self::AddImmediate { x, nn } => xnn(ADD_IMMEDIATE, x, nn),
+            Self::AddWithCarry { x, y } => xyn(REGISTER_OP, x, y, ADD_WITH_CARRY),
+            Self::JumpWithOffset { addr } => nnn(JUMP_WITH_OFFSET, addr),
         }
     }
 }

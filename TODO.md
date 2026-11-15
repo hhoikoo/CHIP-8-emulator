@@ -7,10 +7,9 @@
   - Make `run()` call `step()` in a loop
   - Lets us test one instruction at a time
   - Gives us a place for a cycle limit, so a jump loop can't hang forever
-- [ ] Program start location
-  - `pc` starts at `0`, but real CHIP-8 programs start at `0x200`
+- [x] Program start location
+  - `pc` starts at `PROGRAM_START` (`0x200`, in `memory.rs`), like real CHIP-8 programs
   - The first 512 bytes are reserved (font sprites live there)
-  - Pick a start address and make it a constant
 - [x] Type-safe registers
   - Add a `Register` enum with 16 variants, `V0` to `VF`
   - Convert a nibble to a `Register` with a function that can't fail

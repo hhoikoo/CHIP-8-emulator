@@ -21,6 +21,13 @@ impl Addr {
     pub const fn get(self) -> u16 {
         self.0
     }
+
+    pub(crate) const fn expect_new(value: u16) -> Addr {
+        match Addr::new(value) {
+            Ok(addr) => addr,
+            Err(_) => panic!("value must be 0x000 to 0xFFF"),
+        }
+    }
 }
 
 impl TryFrom<u16> for Addr {

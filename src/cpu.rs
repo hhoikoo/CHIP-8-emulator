@@ -11,7 +11,7 @@ use crate::{
         opcode::Opcode,
         register::{Register, Registers},
     },
-    memory::Memory,
+    memory::{Memory, PROGRAM_START},
     rom::Rom,
 };
 
@@ -40,7 +40,7 @@ impl Cpu {
 
         Cpu {
             registers: Registers::default(),
-            pc: ProgramCounter::new(0),
+            pc: ProgramCounter::from(PROGRAM_START),
             memory,
             stack: [ProgramCounter::new(0); STACK_SIZE],
             stack_ptr: 0,

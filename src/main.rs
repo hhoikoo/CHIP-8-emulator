@@ -1,12 +1,16 @@
 use chip8_emulator::{
     cpu::Cpu,
-    examples::{fn_add_twice, fn_main},
+    examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
     isa::register::Register,
+    memory::PROGRAM_START,
     rom::Rom,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rom = Rom::new(&[(0x0000, &fn_main()), (0x0100, &fn_add_twice())])?;
+    let rom = Rom::new(&[
+        (usize::from(PROGRAM_START), &fn_main()),
+        (usize::from(FN_ADD_TWICE_ADDR), &fn_add_twice()),
+    ])?;
     let mut cpu = Cpu::new(&rom);
 
     cpu.run()?;

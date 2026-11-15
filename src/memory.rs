@@ -1,6 +1,7 @@
-use crate::isa::opcode::Opcode;
+use crate::isa::{addr::Addr, opcode::Opcode};
 
 pub const MEMORY_SIZE: usize = 0x1000;
+pub const PROGRAM_START: Addr = Addr::expect_new(0x200);
 
 #[derive(Debug)]
 pub struct Memory([u8; MEMORY_SIZE]);

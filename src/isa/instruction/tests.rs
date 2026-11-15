@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 1 + 5 * 0x1000 + 0x100;
+const DECODABLE_OPCODE_COUNT: usize = 1 + 5 * 0x1000 + 0x100;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -13,7 +13,6 @@ fn addr(value: u16) -> Addr {
 
 #[test]
 fn decodes_each_instruction() {
-    assert_eq!(decode(0x0000), Ok(Instruction::Halt));
     assert_eq!(decode(0x00EE), Ok(Instruction::Return));
     assert_eq!(decode(0x1ABC), Ok(Instruction::Jump { addr: addr(0xABC) }));
     assert_eq!(
@@ -60,7 +59,9 @@ fn operand_extremes() {
 
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
-    for opcode in [0x00E0, 0x0001, 0x0123, 0x5121, 0x8120, 0x8125, 0xF000] {
+    for opcode in [
+        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x8120, 0x8125, 0xF000,
+    ] {
         assert_eq!(
             decode(opcode),
             Err(UnknownOpcodeError {
@@ -71,8 +72,7 @@ fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
 }
 
 #[test]
-fn near_misses_of_halt_and_return_are_unknown() {
-    assert!(decode(0x0001).is_err());
+fn near_misses_of_return_are_unknown() {
     assert!(decode(0x00EF).is_err());
     assert!(decode(0x00ED).is_err());
     assert!(decode(0x01EE).is_err());
@@ -95,7 +95,6 @@ fn exhaustive_decode_matches_the_opcode_bits() {
         let addr = Addr::new(opcode & 0x0FFF).unwrap();
 
         let expected = match opcode {
-            0x0000 => Some(Instruction::Halt),
             0x00EE => Some(Instruction::Return),
             0x1000..=0x1FFF => Some(Instruction::Jump { addr }),
             0x2000..=0x2FFF => Some(Instruction::Call { addr }),
@@ -132,7 +131,6 @@ fn unknown_opcode_error_message() {
 #[test]
 fn encodes_each_instruction() {
     let cases = [
-        (Instruction::Halt, 0x0000),
         (Instruction::Return, 0x00EE),
         (Instruction::Jump { addr: addr(0xABC) }, 0x1ABC),
         (Instruction::JumpWithOffset { addr: addr(0xABC) }, 0xBABC),

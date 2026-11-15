@@ -10,7 +10,6 @@ Currently supported instructions:
 
 | Opcode | Meaning |
 | --- | --- |
-| `0000` | halt (our own stop instruction) |
 | `00EE` | return |
 | `1NNN` | jump to `NNN` |
 | `2NNN` | call `NNN` |

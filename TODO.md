@@ -53,10 +53,12 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [x] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
         - Configurable with `Quirks { jump: JumpQuirk }`, `AddV0` by default
       - [ ] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it
-    - [ ] Remove the custom `0x0000` halt (after `1NNN`)
-      - [ ] Decide what `0NNN` does: ignore it like modern interpreters, or report it as an unknown opcode
-      - [ ] End test programs and generated ROMs with a jump to themselves and check them after a cycle budget
-      - [ ] Remove `Instruction::Halt` and `CpuState::Halt`, rework `run()` and the demo program, and drop the `0000` row from `README.md`
+    - [x] Remove the custom `0x0000` halt (after `1NNN`)
+      - [x] Decide what `0NNN` does: ignore it like modern interpreters, or report it as an unknown opcode
+        - Unknown opcode: it would run native COSMAC VIP machine code, and zeroed memory (`0000`) then fails at once
+      - [x] End test programs and generated ROMs with a jump to themselves and check them after a cycle budget
+      - [x] Remove `Instruction::Halt` and `CpuState::Halt`, rework `run()` and the demo program, and drop the `0000` row from `README.md`
+        - `run(should_stop)` runs until the closure says stop; `run_for(cycles)` runs exactly that many; `cargo run -- <rom>` stops on Ctrl-C and prints the registers
   - [ ] Group 2: index register `I`
     - Needs: nothing
     - [ ] Add a 16-bit `I` register to `Cpu`
@@ -127,7 +129,7 @@ Work on this alongside the opcode groups: each item says which group it needs, s
   - [ ] Run the CPU at a steady speed: a fixed number of instructions per 60 Hz frame
     - [ ] Decide the instructions per frame (about 10–15, i.e. roughly 600–900 per second, is typical)
     - [ ] Use a fixed-timestep clock, so a 120 Hz (ProMotion) display still runs the emulator at 60 Hz
-    - Needs: the window above, and the halt removal in Group 1 (the frame loop replaces `run()`)
+    - Needs: the window above, and the halt removal in Group 1 (the frame loop calls `run_for` each frame)
   - [ ] Tick the delay and sound timers once per frame
     - Needs: Group 5 and the frame loop
   - [ ] Beep while the sound timer is above zero with `rodio` (optional)

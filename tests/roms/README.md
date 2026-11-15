@@ -6,16 +6,16 @@ Tiny `.ch8` files built only from the opcodes the emulator supports. Their sourc
 
 - `rom_files_match_their_listings` fails if a file drifts from its listing.
 - `cargo test --test generated_roms -- --ignored` rewrites the files from the listings.
-- Each ROM has an exact cycle budget: it reaches its outcome in that many cycles, and one cycle fewer stops at the cycle limit.
+- Each ROM has a cycle budget. A ROM that loops reaches its loop (a jump to itself) in exactly that many cycles and is checked by its registers. A ROM that fails fails on exactly its last cycle, and one cycle fewer runs without an error.
 
 | ROM | Cycles | Outcome |
 |---|---|---|
-| `halt` | 1 | halts |
-| `zero_padding_halts` | 2 | `V0 = 1`, then runs into zeroed memory, which decodes as our custom halt (`0x0000`) |
-| `load_and_add` | 3 | `V0 = 8` |
-| `add_with_carry` | 4 | `V0 = 0x10`, `VF = 1` |
-| `call_and_return` | 11 | `V0 = 45` (the demo program in one file) |
-| `nested_calls` | 49 | `V0 = 16`, after 16 nested calls (the full stack) |
+| `jump` | 2 | `V0 = 2`, after jumping over `V0 = 1` |
+| `zero_padding_is_an_unknown_opcode` | 2 | `V0 = 1`, then fails: zeroed memory decodes as unknown opcode `0x0000` |
+| `load_and_add` | 2 | `V0 = 8` |
+| `add_with_carry` | 3 | `V0 = 0x10`, `VF = 1` |
+| `call_and_return` | 10 | `V0 = 45` (the demo program in one file) |
+| `nested_calls` | 48 | `V0 = 16`, after 16 nested calls (the full stack) |
 | `stack_overflow` | 17 | fails: stack overflow |
 | `stack_underflow` | 1 | fails: stack underflow |
 | `unknown_opcode` | 2 | fails: unknown opcode `0xF000` |

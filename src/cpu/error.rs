@@ -20,9 +20,6 @@ pub enum CpuError {
     StackUnderflow {
         pc: ProgramCounter,
     },
-    CycleLimitReached {
-        pc: ProgramCounter,
-    },
 }
 
 impl Display for CpuError {
@@ -43,9 +40,6 @@ impl Display for CpuError {
                 )
             }
             CpuError::StackUnderflow { pc } => write!(f, "Stack underflow at pc {pc:#06x}"),
-            CpuError::CycleLimitReached { pc } => {
-                write!(f, "Cycle limit reached before halting, at pc {pc:#06x}")
-            }
         }
     }
 }

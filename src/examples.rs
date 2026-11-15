@@ -12,7 +12,7 @@ pub fn fn_add_twice() -> [Instruction; 3] {
     [add, add, Instruction::Return]
 }
 
-pub fn fn_main() -> [Instruction; 5] {
+pub fn fn_main(start_addr: Addr) -> [Instruction; 5] {
     [
         Instruction::LoadImmediate {
             x: Register::V0,
@@ -28,6 +28,8 @@ pub fn fn_main() -> [Instruction; 5] {
         Instruction::Call {
             addr: FN_ADD_TWICE_ADDR,
         },
-        Instruction::Halt,
+        Instruction::Jump {
+            addr: Addr::expect_new(start_addr.get() + 8),
+        },
     ]
 }

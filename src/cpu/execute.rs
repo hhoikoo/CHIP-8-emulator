@@ -1,10 +1,9 @@
-use super::{Cpu, CpuError, CpuState, JumpQuirk, ProgramCounter};
+use super::{Cpu, CpuError, JumpQuirk, ProgramCounter};
 use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {
         match instruction {
-            Instruction::Halt => self.state = CpuState::Halt,
             Instruction::Return => self.ret()?,
             Instruction::Jump { addr } => self.jump(addr),
             Instruction::JumpWithOffset { addr } => self.jump_with_offset(addr),

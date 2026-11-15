@@ -26,14 +26,7 @@ pub struct Cpu {
     memory: Memory,
     stack: [ProgramCounter; STACK_SIZE],
     stack_ptr: usize,
-    state: CpuState,
     quirks: Quirks,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum CpuState {
-    Running,
-    Halt,
 }
 
 impl Cpu {
@@ -51,7 +44,6 @@ impl Cpu {
             memory,
             stack: [ProgramCounter::new(0); STACK_SIZE],
             stack_ptr: 0,
-            state: CpuState::Running,
             quirks,
         }
     }
@@ -60,30 +52,21 @@ impl Cpu {
         self.registers[register]
     }
 
-    pub fn run(&mut self) -> Result<(), CpuError> {
-        loop {
+    pub fn run(&mut self, mut should_stop: impl FnMut() -> bool) -> Result<(), CpuError> {
+        while !should_stop() {
             self.step()?;
-            if self.state == CpuState::Halt {
-                return Ok(());
-            }
         }
+        Ok(())
     }
 
     pub fn run_for(&mut self, cycle_limit: usize) -> Result<(), CpuError> {
         for _ in 0..cycle_limit {
             self.step()?;
-            if self.state == CpuState::Halt {
-                return Ok(());
-            }
         }
-        Err(CpuError::CycleLimitReached { pc: self.pc })
+        Ok(())
     }
 
     pub fn step(&mut self) -> Result<(), CpuError> {
-        if self.state == CpuState::Halt {
-            return Ok(());
-        }
-
         let opcode = self.read_opcode()?;
         let instruction = Instruction::try_from(opcode).map_err(|err| CpuError::UnknownOpcode {
             opcode: err.opcode,

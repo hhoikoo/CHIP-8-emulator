@@ -11,7 +11,6 @@ use crate::isa::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
-    Halt,
     Return,
     Jump { addr: Addr },
     JumpWithOffset { addr: Addr },
@@ -21,7 +20,6 @@ pub enum Instruction {
     AddWithCarry { x: Register, y: Register },
 }
 
-const HALT: Opcode = Opcode::new(0x0000);
 const RETURN: Opcode = Opcode::new(0x00EE);
 const JUMP: Nibble = Nibble::expect_new(0x1);
 const CALL: Nibble = Nibble::expect_new(0x2);
@@ -40,7 +38,6 @@ impl TryFrom<Opcode> for Instruction {
         let Xyn { y, n, .. } = opcode.into();
 
         match (opcode, prefix, n) {
-            (HALT, ..) => Ok(Self::Halt),
             (RETURN, ..) => Ok(Self::Return),
             (_, JUMP, _) => Ok(Self::Jump { addr }),
             (_, CALL, _) => Ok(Self::Call { addr }),
@@ -68,7 +65,6 @@ fn xyn(prefix: Nibble, x: Register, y: Register, n: Nibble) -> Opcode {
 impl Instruction {
     pub fn encode(self) -> Opcode {
         match self {
-            Self::Halt => HALT,
             Self::Return => RETURN,
             Self::Jump { addr } => nnn(JUMP, addr),
             Self::Call { addr } => nnn(CALL, addr),

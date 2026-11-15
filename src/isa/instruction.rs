@@ -4,6 +4,7 @@ pub use error::UnknownOpcodeError;
 
 use crate::isa::{
     addr::Addr,
+    nibble::Nibble,
     opcode::{Nnn, Opcode, Xnn, Xyn},
     register::Register,
 };
@@ -43,6 +44,45 @@ impl TryFrom<Opcode> for Instruction {
             }
             _ => Err(UnknownOpcodeError { opcode }),
         }
+    }
+}
+
+impl Instruction {
+    pub fn encode(self) -> Opcode {
+        match self {
+            Self::Halt => Opcode::new(0x0000),
+            Self::Return => Opcode::new(0x00EE),
+            Self::Call { addr } => Nnn {
+                prefix: Nibble::expect_new(0x2),
+                addr,
+            }
+            .into(),
+            Self::LoadImmediate { x, nn } => Xnn {
+                prefix: Nibble::expect_new(0x6),
+                x,
+                nn,
+            }
+            .into(),
+            Self::AddImmediate { x, nn } => Xnn {
+                prefix: Nibble::expect_new(0x7),
+                x,
+                nn,
+            }
+            .into(),
+            Self::AddWithCarry { x, y } => Xyn {
+                prefix: Nibble::expect_new(0x8),
+                x,
+                y,
+                n: Nibble::expect_new(0x4),
+            }
+            .into(),
+        }
+    }
+}
+
+impl From<Instruction> for Opcode {
+    fn from(instruction: Instruction) -> Opcode {
+        instruction.encode()
     }
 }
 

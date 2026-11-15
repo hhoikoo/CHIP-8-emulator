@@ -128,3 +128,36 @@ fn unknown_opcode_error_message() {
         "Opcode 0xf000 is not recognized or is not supported yet"
     );
 }
+
+#[test]
+fn encodes_each_instruction() {
+    let cases = [
+        (Instruction::Halt, 0x0000),
+        (Instruction::Return, 0x00EE),
+        (Instruction::Call { addr: addr(0xABC) }, 0x2ABC),
+        (Instruction::LoadImmediate { x: VA, nn: 0x05 }, 0x6A05),
+        (Instruction::AddImmediate { x: VB, nn: 0x7F }, 0x7B7F),
+        (Instruction::AddWithCarry { x: V1, y: V2 }, 0x8124),
+    ];
+    for (instruction, opcode) in cases {
+        assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");
+    }
+}
+
+#[test]
+fn encode_is_the_reverse_of_decode_for_every_opcode() {
+    let mut round_tripped = 0;
+    for opcode in 0..=u16::MAX {
+        if let Ok(instruction) = decode(opcode) {
+            assert_eq!(instruction.encode().get(), opcode, "{instruction:?}");
+            round_tripped += 1;
+        }
+    }
+    assert_eq!(round_tripped, 1 + 1 + 4096 * 3 + 256);
+}
+
+#[test]
+fn from_instruction_matches_encode() {
+    let instruction = Instruction::AddWithCarry { x: VF, y: V0 };
+    assert_eq!(Opcode::from(instruction), instruction.encode());
+}

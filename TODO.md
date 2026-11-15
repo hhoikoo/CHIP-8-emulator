@@ -39,10 +39,10 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - Registers
       - [x] `6XNN` `VX = NN`
       - [x] `7XNN` `VX += NN`
-      - [ ] `8XY0` `VX = VY`
-      - [ ] `8XY1` `VX |= VY`
-      - [ ] `8XY2` `VX &= VY`
-      - [ ] `8XY3` `VX ^= VY`
+      - [x] `8XY0` `VX = VY`
+      - [x] `8XY1` `VX |= VY`
+      - [x] `8XY2` `VX &= VY`
+      - [x] `8XY3` `VX ^= VY`
       - [x] `8XY4` `VX += VY`, carry in `VF`
       - [ ] `8XY5` `VX -= VY`, `VF` set if no borrow
       - [ ] `8XY6` shift right, bit shifted out goes to `VF`
@@ -52,7 +52,8 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [ ] Decide the shift quirk: `8XY6`/`8XYE` shift `VY` into `VX` (original) or shift `VX` in place (CHIP-48, SUPER-CHIP)
       - [x] Decide the jump quirk: `BNNN` adds `V0` (original) or `VX` (CHIP-48, SUPER-CHIP)
         - Configurable with `Quirks { jump: JumpQuirk }`, `AddV0` by default
-      - [ ] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it
+      - [x] Decide the `VF` reset quirk: `8XY1`/`8XY2`/`8XY3` set `VF = 0` (original) or leave it
+        - Configurable with `Quirks { logic: LogicQuirk }`, `ResetVf` by default
     - [x] Remove the custom `0x0000` halt (after `1NNN`)
       - [x] Decide what `0NNN` does: ignore it like modern interpreters, or report it as an unknown opcode
         - Unknown opcode: it would run native COSMAC VIP machine code, and zeroed memory (`0000`) then fails at once

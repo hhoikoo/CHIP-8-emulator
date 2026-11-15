@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 7 * 0x1000 + 3 * 0x100;
+const DECODABLE_OPCODE_COUNT: usize = 1 + 7 * 0x1000 + 7 * 0x100;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -48,6 +48,13 @@ fn decodes_each_instruction() {
         decode(0x8124),
         Ok(Instruction::AddWithCarry { x: V1, y: V2 })
     );
+    assert_eq!(
+        decode(0x8120),
+        Ok(Instruction::LoadRegister { x: V1, y: V2 })
+    );
+    assert_eq!(decode(0x8121), Ok(Instruction::Or { x: V1, y: V2 }));
+    assert_eq!(decode(0x8122), Ok(Instruction::And { x: V1, y: V2 }));
+    assert_eq!(decode(0x8123), Ok(Instruction::Xor { x: V1, y: V2 }));
 }
 
 #[test]
@@ -76,7 +83,7 @@ fn operand_extremes() {
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
-        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8120, 0x8125, 0xF000,
+        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8125, 0x812F, 0xF000,
     ] {
         assert_eq!(
             decode(opcode),
@@ -95,10 +102,15 @@ fn near_misses_of_return_are_unknown() {
 }
 
 #[test]
-fn only_8xy4_is_decoded_among_the_8_family() {
+fn only_the_known_suffixes_decode_in_the_8_family() {
+    let known_suffixes = [0x0, 0x1, 0x2, 0x3, 0x4];
     let decoded: Vec<u16> = (0x8000..=0x8FFF).filter(|&op| decode(op).is_ok()).collect();
-    assert_eq!(decoded.len(), 256);
-    assert!(decoded.iter().all(|op| op & 0xF == 4));
+    assert_eq!(decoded.len(), known_suffixes.len() * 0x100);
+    assert!(
+        decoded
+            .iter()
+            .all(|op| known_suffixes.contains(&(op & 0xF)))
+    );
 }
 
 #[test]
@@ -119,6 +131,10 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0x5000..=0x5FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfEqual { x, y }),
             0x6000..=0x6FFF => Some(Instruction::LoadImmediate { x, nn }),
             0x7000..=0x7FFF => Some(Instruction::AddImmediate { x, nn }),
+            0x8000..=0x8FFF if opcode & 0xF == 0 => Some(Instruction::LoadRegister { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 1 => Some(Instruction::Or { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 2 => Some(Instruction::And { x, y }),
+            0x8000..=0x8FFF if opcode & 0xF == 3 => Some(Instruction::Xor { x, y }),
             0x8000..=0x8FFF if opcode & 0xF == 4 => Some(Instruction::AddWithCarry { x, y }),
             0x9000..=0x9FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfNotEqual { x, y }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
@@ -168,6 +184,10 @@ fn encodes_each_instruction() {
         (Instruction::LoadImmediate { x: VA, nn: 0x05 }, 0x6A05),
         (Instruction::AddImmediate { x: VB, nn: 0x7F }, 0x7B7F),
         (Instruction::AddWithCarry { x: V1, y: V2 }, 0x8124),
+        (Instruction::LoadRegister { x: V1, y: V2 }, 0x8120),
+        (Instruction::Or { x: V1, y: V2 }, 0x8121),
+        (Instruction::And { x: V1, y: V2 }, 0x8122),
+        (Instruction::Xor { x: V1, y: V2 }, 0x8123),
     ];
     for (instruction, opcode) in cases {
         assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");

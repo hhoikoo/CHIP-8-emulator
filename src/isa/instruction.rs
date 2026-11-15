@@ -16,8 +16,12 @@ pub enum Instruction {
     JumpWithOffset { addr: Addr },
     Call { addr: Addr },
     LoadImmediate { x: Register, nn: u8 },
+    LoadRegister { x: Register, y: Register },
     AddImmediate { x: Register, nn: u8 },
     AddWithCarry { x: Register, y: Register },
+    Or { x: Register, y: Register },
+    And { x: Register, y: Register },
+    Xor { x: Register, y: Register },
     SkipIfEqualImmediate { x: Register, nn: u8 },
     SkipIfNotEqualImmediate { x: Register, nn: u8 },
     SkipIfEqual { x: Register, y: Register },
@@ -28,9 +32,13 @@ const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
 const JUMP: Nibble = Nibble::expect_new(0x1);
 const CALL: Nibble = Nibble::expect_new(0x2);
 const LOAD_IMMEDIATE: Nibble = Nibble::expect_new(0x6);
+const LOAD_REGISTER: Nibble = Nibble::expect_new(0x0);
 const ADD_IMMEDIATE: Nibble = Nibble::expect_new(0x7);
 const REGISTER_OP: Nibble = Nibble::expect_new(0x8);
 const ADD_WITH_CARRY: Nibble = Nibble::expect_new(0x4);
+const OR: Nibble = Nibble::expect_new(0x1);
+const AND: Nibble = Nibble::expect_new(0x2);
+const XOR: Nibble = Nibble::expect_new(0x3);
 const JUMP_WITH_OFFSET: Nibble = Nibble::expect_new(0xB);
 const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
 const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
@@ -51,8 +59,12 @@ impl TryFrom<Opcode> for Instruction {
             [JUMP, ..] => Ok(Self::Jump { addr }),
             [CALL, ..] => Ok(Self::Call { addr }),
             [LOAD_IMMEDIATE, ..] => Ok(Self::LoadImmediate { x, nn }),
+            [REGISTER_OP, _, _, LOAD_REGISTER] => Ok(Self::LoadRegister { x, y }),
             [ADD_IMMEDIATE, ..] => Ok(Self::AddImmediate { x, nn }),
             [REGISTER_OP, _, _, ADD_WITH_CARRY] => Ok(Self::AddWithCarry { x, y }),
+            [REGISTER_OP, _, _, OR] => Ok(Self::Or { x, y }),
+            [REGISTER_OP, _, _, AND] => Ok(Self::And { x, y }),
+            [REGISTER_OP, _, _, XOR] => Ok(Self::Xor { x, y }),
             [JUMP_WITH_OFFSET, ..] => Ok(Self::JumpWithOffset { addr }),
             [SKIP_IF_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfEqualImmediate { x, nn }),
             [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
@@ -82,8 +94,12 @@ impl Instruction {
             Self::Jump { addr } => nnn(JUMP, addr),
             Self::Call { addr } => nnn(CALL, addr),
             Self::LoadImmediate { x, nn } => xnn(LOAD_IMMEDIATE, x, nn),
+            Self::LoadRegister { x, y } => xyn(REGISTER_OP, x, y, LOAD_REGISTER),
             Self::AddImmediate { x, nn } => xnn(ADD_IMMEDIATE, x, nn),
             Self::AddWithCarry { x, y } => xyn(REGISTER_OP, x, y, ADD_WITH_CARRY),
+            Self::Or { x, y } => xyn(REGISTER_OP, x, y, OR),
+            Self::And { x, y } => xyn(REGISTER_OP, x, y, AND),
+            Self::Xor { x, y } => xyn(REGISTER_OP, x, y, XOR),
             Self::JumpWithOffset { addr } => nnn(JUMP_WITH_OFFSET, addr),
             Self::SkipIfEqualImmediate { x, nn } => xnn(SKIP_IF_EQUAL_IMMEDIATE, x, nn),
             Self::SkipIfNotEqualImmediate { x, nn } => xnn(SKIP_IF_NOT_EQUAL_IMMEDIATE, x, nn),

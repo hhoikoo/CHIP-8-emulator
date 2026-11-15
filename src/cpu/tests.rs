@@ -321,6 +321,7 @@ fn jump_with_offset_adds_v0_by_default() {
 fn jump_with_offset_adds_vx_with_the_vx_quirk() {
     let quirks = Quirks {
         jump: JumpQuirk::AddVx,
+        ..Quirks::default()
     };
     assert_eq!(va_after_jump_with_offset(quirks), 2);
 }
@@ -335,6 +336,7 @@ fn jump_with_offset_past_the_end_of_memory_is_pc_out_of_bounds() {
 fn jump_with_offset_with_the_vx_quirk_adds_vx_to_the_low_byte() {
     let quirks = Quirks {
         jump: JumpQuirk::AddVx,
+        ..Quirks::default()
     };
     let mut c = cpu_with_quirks(
         &[(START, &[load(VF, 0xFF), jump_with_offset(0xFFF)])],
@@ -532,4 +534,98 @@ fn skip_on_the_last_instruction_is_pc_out_of_bounds() {
         (0xFFE, &[SkipIfEqualImmediate { x: V0, nn: 0 }]),
     ]);
     assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0x1002));
+}
+
+fn registers_after(program: &[Instruction], quirks: Quirks) -> Registers {
+    let mut c = cpu_with_quirks(&[(START, &looping(START, program))], quirks);
+    run_cycles(&mut c).unwrap();
+    c.registers
+}
+
+fn keep_vf() -> Quirks {
+    Quirks {
+        logic: LogicQuirk::KeepVf,
+        ..Quirks::default()
+    }
+}
+
+#[test]
+fn new_cpu_resets_vf_on_logic_by_default() {
+    assert_eq!(Quirks::default().logic, LogicQuirk::ResetVf);
+}
+
+#[test]
+fn load_register_copies_vy_into_vx() {
+    let r = registers_after(
+        &[load(V1, 0x2A), load(VF, 7), LoadRegister { x: V0, y: V1 }],
+        Quirks::default(),
+    );
+    assert_eq!(r[V0], 0x2A);
+    assert_eq!(r[V1], 0x2A);
+    assert_eq!(r[VF], 7);
+}
+
+#[test]
+fn bitwise_operations() {
+    let setup = [load(V0, 0b1100), load(V1, 0b1010)];
+    let cases = [
+        (Or { x: V0, y: V1 }, 0b1110),
+        (And { x: V0, y: V1 }, 0b1000),
+        (Xor { x: V0, y: V1 }, 0b0110),
+    ];
+    for (operation, expected) in cases {
+        let mut program = setup.to_vec();
+        program.push(operation);
+        let r = registers_after(&program, Quirks::default());
+        assert_eq!(r[V0], expected, "{operation:?}");
+        assert_eq!(r[V1], 0b1010, "{operation:?}");
+    }
+}
+
+fn bitwise_with_vf_set(operation: Instruction, quirks: Quirks) -> u8 {
+    let program = [load(V0, 0b1100), load(V1, 0b1010), load(VF, 7), operation];
+    registers_after(&program, quirks)[VF]
+}
+
+#[test]
+fn bitwise_operations_reset_vf_by_default() {
+    for operation in [
+        Or { x: V0, y: V1 },
+        And { x: V0, y: V1 },
+        Xor { x: V0, y: V1 },
+    ] {
+        assert_eq!(
+            bitwise_with_vf_set(operation, Quirks::default()),
+            0,
+            "{operation:?}"
+        );
+    }
+}
+
+#[test]
+fn bitwise_operations_keep_vf_with_the_keep_quirk() {
+    for operation in [
+        Or { x: V0, y: V1 },
+        And { x: V0, y: V1 },
+        Xor { x: V0, y: V1 },
+    ] {
+        assert_eq!(
+            bitwise_with_vf_set(operation, keep_vf()),
+            7,
+            "{operation:?}"
+        );
+    }
+}
+
+#[test]
+fn load_register_never_resets_vf() {
+    let program = [load(VF, 7), LoadRegister { x: V0, y: V1 }];
+    assert_eq!(registers_after(&program, Quirks::default())[VF], 7);
+}
+
+#[test]
+fn bitwise_into_vf_ends_with_the_quirk_result() {
+    let program = [load(VF, 0b0001), load(V1, 0b0110), Or { x: VF, y: V1 }];
+    assert_eq!(registers_after(&program, Quirks::default())[VF], 0);
+    assert_eq!(registers_after(&program, keep_vf())[VF], 0b0111);
 }

@@ -1,4 +1,4 @@
-use super::{Cpu, CpuError, JumpQuirk, ProgramCounter};
+use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, ProgramCounter};
 use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
 
 impl Cpu {
@@ -9,8 +9,12 @@ impl Cpu {
             Instruction::JumpWithOffset { addr } => self.jump_with_offset(addr),
             Instruction::Call { addr } => self.call(addr)?,
             Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
+            Instruction::LoadRegister { x, y } => self.load_register(x, y),
             Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
             Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
+            Instruction::Or { x, y } => self.or(x, y),
+            Instruction::And { x, y } => self.and(x, y),
+            Instruction::Xor { x, y } => self.xor(x, y),
             Instruction::SkipIfEqualImmediate { x, nn } => self.skip_if_equal_immediate(x, nn),
             Instruction::SkipIfNotEqualImmediate { x, nn } => {
                 self.skip_if_not_equal_immediate(x, nn)
@@ -67,6 +71,10 @@ impl Cpu {
         self.registers[x] = nn;
     }
 
+    fn load_register(&mut self, x: Register, y: Register) {
+        self.registers[x] = self.registers[y];
+    }
+
     fn add_immediate(&mut self, x: Register, nn: u8) {
         let register: &mut u8 = &mut self.registers[x];
         *register = register.wrapping_add(nn);
@@ -79,6 +87,28 @@ impl Cpu {
         let (val, overflow) = arg1.overflowing_add(arg2);
         self.registers[x] = val;
         self.registers[Register::VF] = u8::from(overflow);
+    }
+
+    fn or(&mut self, x: Register, y: Register) {
+        self.registers[x] |= self.registers[y];
+        self.reset_vf();
+    }
+
+    fn and(&mut self, x: Register, y: Register) {
+        self.registers[x] &= self.registers[y];
+        self.reset_vf();
+    }
+
+    fn xor(&mut self, x: Register, y: Register) {
+        self.registers[x] ^= self.registers[y];
+        self.reset_vf();
+    }
+
+    fn reset_vf(&mut self) {
+        match self.quirks.logic {
+            LogicQuirk::ResetVf => self.registers[Register::VF] = 0,
+            LogicQuirk::KeepVf => (),
+        }
     }
 
     fn skip_if_equal_immediate(&mut self, x: Register, nn: u8) {

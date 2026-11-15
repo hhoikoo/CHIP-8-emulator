@@ -18,6 +18,10 @@ Currently supported instructions:
 | `5XY0` | skip next if `VX == VY` |
 | `6XNN` | `VX = NN` |
 | `7XNN` | `VX += NN` |
+| `8XY0` | `VX = VY` |
+| `8XY1` | `VX \|= VY`, `VF = 0` (quirk: `VF` kept) |
+| `8XY2` | `VX &= VY`, `VF = 0` (quirk: `VF` kept) |
+| `8XY3` | `VX ^= VY`, `VF = 0` (quirk: `VF` kept) |
 | `8XY4` | `VX += VY`, carry in `VF` |
 | `9XY0` | skip next if `VX != VY` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |

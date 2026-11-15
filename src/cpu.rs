@@ -5,7 +5,7 @@ mod quirks;
 
 pub use error::CpuError;
 pub use program_counter::ProgramCounter;
-pub use quirks::{JumpQuirk, Quirks};
+pub use quirks::{JumpQuirk, LogicQuirk, Quirks};
 
 use crate::{
     isa::{

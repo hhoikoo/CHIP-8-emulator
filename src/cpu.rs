@@ -9,7 +9,7 @@ use crate::{
         opcode::Opcode,
         register::{Register, Registers},
     },
-    memory::MEMORY_SIZE,
+    memory::Memory,
     rom::Rom,
 };
 
@@ -19,7 +19,7 @@ pub const STACK_SIZE: usize = 16;
 pub struct Cpu {
     registers: Registers,
     pc: usize,
-    memory: [u8; MEMORY_SIZE],
+    memory: Memory,
     stack: [u16; STACK_SIZE],
     stack_ptr: usize,
     state: CpuState,
@@ -33,7 +33,7 @@ pub enum CpuState {
 
 impl Cpu {
     pub fn new(rom: &Rom) -> Self {
-        let mut memory = [0; MEMORY_SIZE];
+        let mut memory = Memory::default();
         rom.load_into_memory(&mut memory);
 
         Cpu {
@@ -86,11 +86,9 @@ impl Cpu {
     }
 
     fn read_opcode(&self) -> Result<Opcode, CpuError> {
-        let pc = self.pc;
-        match self.memory.get(pc..pc + 2) {
-            Some(&[high, low]) => Ok(Opcode::new(u16::from_be_bytes([high, low]))),
-            _ => Err(CpuError::PcOutOfBounds { pc }),
-        }
+        self.memory
+            .read_opcode(self.pc)
+            .ok_or(CpuError::PcOutOfBounds { pc: self.pc })
     }
 }
 

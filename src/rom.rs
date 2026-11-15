@@ -2,9 +2,10 @@ mod error;
 
 pub use error::LoadError;
 
-use std::ops::Range;
-
-use crate::{isa::opcode::Opcode, memory::MEMORY_SIZE};
+use crate::{
+    isa::opcode::Opcode,
+    memory::{MEMORY_SIZE, Memory},
+};
 
 #[derive(Debug)]
 pub struct Rom {
@@ -31,9 +32,11 @@ impl Rom {
         Ok(Self { segments })
     }
 
-    pub fn load_into_memory(&self, memory: &mut [u8; MEMORY_SIZE]) {
+    pub fn load_into_memory(&self, memory: &mut Memory) {
         for segment in self.segments.iter() {
-            memory[segment.range()].copy_from_slice(&segment.bytes);
+            memory
+                .write(segment.start, &segment.bytes)
+                .expect("Rom::new checked that every segment fits in memory");
         }
     }
 
@@ -79,10 +82,6 @@ impl Segment {
 
     fn end(&self) -> usize {
         self.start + self.bytes.len()
-    }
-
-    fn range(&self) -> Range<usize> {
-        self.start..self.end()
     }
 }
 

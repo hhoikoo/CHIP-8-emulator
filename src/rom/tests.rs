@@ -6,10 +6,20 @@ fn build(s: &[(usize, &[u16])]) -> Result<Rom, LoadError> {
     Rom::new(s)
 }
 
+fn bytes(memory: &Memory) -> [u8; MEMORY_SIZE] {
+    memory.read(0, MEMORY_SIZE).unwrap().try_into().unwrap()
+}
+
+fn filled(byte: u8) -> Memory {
+    let mut memory = Memory::default();
+    memory.write(0, &[byte; MEMORY_SIZE]).unwrap();
+    memory
+}
+
 fn loaded(s: &[(usize, &[u16])]) -> [u8; MEMORY_SIZE] {
-    let mut mem = [0u8; MEMORY_SIZE];
-    build(s).unwrap().load_into_memory(&mut mem);
-    mem
+    let mut memory = Memory::default();
+    build(s).unwrap().load_into_memory(&mut memory);
+    bytes(&memory)
 }
 
 fn is_overlap(r: Result<Rom, LoadError>, a: usize, b: usize) -> bool {
@@ -139,8 +149,9 @@ fn last_two_bytes_of_memory() {
 #[test]
 fn load_does_not_clear_existing_memory() {
     let rom = build(&[(0x10, &[0x1111])]).unwrap();
-    let mut mem = [0xEEu8; MEMORY_SIZE];
-    rom.load_into_memory(&mut mem);
+    let mut memory = filled(0xEE);
+    rom.load_into_memory(&mut memory);
+    let mem = bytes(&memory);
     assert_eq!(&mem[0x10..0x12], &[0x11, 0x11]);
     assert_eq!(mem[0x0F], 0xEE);
     assert_eq!(mem[0x12], 0xEE);
@@ -149,10 +160,10 @@ fn load_does_not_clear_existing_memory() {
 #[test]
 fn rom_is_reusable_across_loads() {
     let rom = build(&[(0x200, &[0x1234])]).unwrap();
-    let (mut a, mut b) = ([0u8; MEMORY_SIZE], [0u8; MEMORY_SIZE]);
+    let (mut a, mut b) = (Memory::default(), Memory::default());
     rom.load_into_memory(&mut a);
     rom.load_into_memory(&mut b);
-    assert_eq!(a, b);
+    assert_eq!(bytes(&a), bytes(&b));
 }
 
 #[test]

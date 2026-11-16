@@ -27,10 +27,10 @@ Four ROMs from [Timendus/chip8-test-suite](https://github.com/Timendus/chip8-tes
 
 They are GPL-3.0, and their license is in `timendus/LICENSE`. They are test data only: nothing in the emulator links or embeds them, and the rest of this repo stays MIT.
 
-`tests/timendus_roms.rs` runs each ROM for its cycle budget and compares the screen with `golden/<rom>.txt`, which has 32 lines of 64 `#` (lit) and `.` (dark) characters:
+`tests/real_roms.rs` runs each ROM for its cycle budget and compares the screen with `golden/<rom>.txt`, which has 32 lines of 64 `#` (lit) and `.` (dark) characters:
 
 - The image appears on exactly the last cycle of the budget, and it doesn't change in 10× as many cycles.
-- `cargo test --test timendus_roms -- --ignored` rewrites the golden images. Check them by eye afterwards.
+- `cargo test --test real_roms -- --ignored` rewrites the golden images. Check them by eye afterwards.
 
 | ROM | SHA-256 | Cycles | Image |
 |---|---|---|---|

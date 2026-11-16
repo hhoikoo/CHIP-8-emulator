@@ -92,7 +92,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Decide how to bring in the GPL-3.0 Timendus test ROMs: commit them, download them in the test, or keep them untracked (`tests/roms/README.md`)
       - Committed unchanged in `tests/roms/timendus/` with their GPL-3.0 license, pinned to commit `742e9ea`
     - [x] Decide the golden-image format for framebuffer tests (e.g. 32 text lines of `#` and `.`)
-      - `tests/roms/golden/<rom>.txt`, from `Framebuffer`'s `Display`; regenerate with `cargo test --test timendus_roms -- --ignored`
+      - `tests/roms/golden/<rom>.txt`, from `Framebuffer`'s `Display`; regenerate with `cargo test --test real_roms -- --ignored`
     - [x] Real-ROM test: `1-chip8-logo.ch8`, compare the framebuffer after 39 cycles with a golden image
       - Needs: `1NNN` from Group 1
     - [x] Real-ROM test: `2-ibm-logo.ch8`, compare the framebuffer after 20 cycles

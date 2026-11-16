@@ -108,3 +108,23 @@ fn index_mut_updates_in_place() {
     regs[V3] += 5;
     assert_eq!(regs[V3], 15);
 }
+
+#[test]
+fn up_to_covers_v0_through_the_given_register() {
+    let mut r = Registers::default();
+    r[V0] = 1;
+    r[V2] = 3;
+    r[V3] = 4;
+    assert_eq!(r.up_to(V0), &[1]);
+    assert_eq!(r.up_to(V2), &[1, 0, 3]);
+    assert_eq!(r.up_to(VF).len(), NUM_REGISTERS);
+}
+
+#[test]
+fn up_to_mut_writes_only_through_the_given_register() {
+    let mut r = Registers::default();
+    r.up_to_mut(V1).copy_from_slice(&[7, 8]);
+    assert_eq!(r[V0], 7);
+    assert_eq!(r[V1], 8);
+    assert_eq!(r[V2], 0);
+}

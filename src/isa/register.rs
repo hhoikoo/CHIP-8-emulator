@@ -82,6 +82,16 @@ impl From<Register> for usize {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Registers([u8; NUM_REGISTERS]);
 
+impl Registers {
+    pub fn up_to(&self, last: Register) -> &[u8] {
+        &self.0[..=usize::from(last)]
+    }
+
+    pub fn up_to_mut(&mut self, last: Register) -> &mut [u8] {
+        &mut self.0[..=usize::from(last)]
+    }
+}
+
 impl Index<Register> for Registers {
     type Output = u8;
 

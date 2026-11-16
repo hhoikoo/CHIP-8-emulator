@@ -61,7 +61,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - [x] End test programs and generated ROMs with a jump to themselves and check them after a cycle budget
       - [x] Remove `Instruction::Halt` and `CpuState::Halt`, rework `run()` and the demo program, and drop the `0000` row from `README.md`
         - `run(should_stop)` runs until the closure says stop; `run_for(cycles)` runs exactly that many; `cargo run -- <rom>` stops on Ctrl-C and prints the registers
-  - [ ] Group 2: index register `I`
+  - [x] Group 2: index register `I`
     - Needs: nothing
     - [x] Add a 16-bit `I` register to `Cpu`
     - [x] Add a `CpuError` variant for reads and writes at `I` past the end of memory
@@ -69,9 +69,9 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] `ANNN` `I = NNN`
     - [x] `FX1E` `I += VX`
       - Wraps at 16 bits and leaves `VF` alone (setting `VF` past `0xFFF` is an Amiga-only quirk)
-    - [ ] `FX33` store `VX` as 3 decimal digits at `I`, `I+1`, `I+2`
-    - [ ] `FX55` store `V0` to `VX` in memory starting at `I`
-    - [ ] `FX65` load `V0` to `VX` from memory starting at `I`
+    - [x] `FX33` store `VX` as 3 decimal digits at `I`, `I+1`, `I+2`
+    - [x] `FX55` store `V0` to `VX` in memory starting at `I`
+    - [x] `FX65` load `V0` to `VX` from memory starting at `I`
     - [x] Decide the memory quirk: `FX55`/`FX65` advance `I` (original) or leave it (CHIP-48, SUPER-CHIP)
       - Configurable with `Quirks { memory: MemoryQuirk }`, `AdvanceI` by default
   - [ ] Group 3: font

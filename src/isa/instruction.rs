@@ -32,6 +32,9 @@ pub enum Instruction {
     SkipIfNotEqualImmediate { x: Register, nn: u8 },
     SkipIfEqual { x: Register, y: Register },
     SkipIfNotEqual { x: Register, y: Register },
+    StoreBcd { x: Register },
+    StoreRegisters { x: Register },
+    LoadRegisters { x: Register },
 }
 
 const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
@@ -58,6 +61,9 @@ const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
 const MISC: Nibble = Nibble::expect_new(0xF);
 const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
 const ADD_TO_INDEX: u8 = 0x1E;
+const STORE_BCD: u8 = 0x33;
+const STORE_REGISTERS: u8 = 0x55;
+const LOAD_REGISTERS: u8 = 0x65;
 
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
@@ -93,6 +99,9 @@ impl TryFrom<Opcode> for Instruction {
             [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
             [MISC, ..] => match nn {
                 ADD_TO_INDEX => Ok(Self::AddToIndex { x }),
+                STORE_BCD => Ok(Self::StoreBcd { x }),
+                STORE_REGISTERS => Ok(Self::StoreRegisters { x }),
+                LOAD_REGISTERS => Ok(Self::LoadRegisters { x }),
                 _ => Err(UnknownOpcodeError { opcode }),
             },
             _ => Err(UnknownOpcodeError { opcode }),
@@ -136,6 +145,9 @@ impl Instruction {
             Self::SkipIfNotEqualImmediate { x, nn } => xnn(SKIP_IF_NOT_EQUAL_IMMEDIATE, x, nn),
             Self::SkipIfEqual { x, y } => xyn(SKIP_IF_EQUAL, x, y, LAST_ZERO),
             Self::SkipIfNotEqual { x, y } => xyn(SKIP_IF_NOT_EQUAL, x, y, LAST_ZERO),
+            Self::StoreBcd { x } => xnn(MISC, x, STORE_BCD),
+            Self::StoreRegisters { x } => xnn(MISC, x, STORE_REGISTERS),
+            Self::LoadRegisters { x } => xnn(MISC, x, LOAD_REGISTERS),
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, ProgramCounter, ShiftQuirk};
+use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter, ShiftQuirk};
 use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
 
 impl Cpu {
@@ -27,6 +27,9 @@ impl Cpu {
             }
             Instruction::SkipIfEqual { x, y } => self.skip_if_equal(x, y),
             Instruction::SkipIfNotEqual { x, y } => self.skip_if_not_equal(x, y),
+            Instruction::StoreBcd { x } => self.store_bcd(x)?,
+            Instruction::StoreRegisters { x } => self.store_registers(x)?,
+            Instruction::LoadRegisters { x } => self.load_registers(x)?,
         }
         Ok(())
     }
@@ -181,6 +184,49 @@ impl Cpu {
     fn skip_if(&mut self, skip: bool) {
         if skip {
             self.pc.advance();
+        }
+    }
+
+    fn store_bcd(&mut self, x: Register) -> Result<(), CpuError> {
+        let value = self.registers[x];
+        let digits = [value / 100, value / 10 % 10, value % 10];
+        self.memory
+            .write(usize::from(self.i), &digits)
+            .ok_or_else(|| self.index_out_of_bounds(digits.len()))
+    }
+
+    fn store_registers(&mut self, x: Register) -> Result<(), CpuError> {
+        let values = self.registers.up_to(x);
+        self.memory
+            .write(usize::from(self.i), values)
+            .ok_or_else(|| self.index_out_of_bounds(values.len()))?;
+        self.advance_index_past(x);
+        Ok(())
+    }
+
+    fn load_registers(&mut self, x: Register) -> Result<(), CpuError> {
+        let len = self.registers.up_to(x).len();
+        let values = self
+            .memory
+            .read(usize::from(self.i), len)
+            .ok_or_else(|| self.index_out_of_bounds(len))?;
+        self.registers.up_to_mut(x).copy_from_slice(values);
+        self.advance_index_past(x);
+        Ok(())
+    }
+
+    fn advance_index_past(&mut self, x: Register) {
+        match self.quirks.memory {
+            MemoryQuirk::AdvanceI => self.i = self.i.wrapping_add(u16::from(x) + 1),
+            MemoryQuirk::LeaveI => (),
+        }
+    }
+
+    fn index_out_of_bounds(&self, len: usize) -> CpuError {
+        CpuError::IndexOutOfBounds {
+            pc: self.pc,
+            i: self.i,
+            len,
         }
     }
 }

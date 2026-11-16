@@ -854,3 +854,230 @@ fn shift_into_vf_keeps_the_flag() {
     );
     assert_eq!(in_place[VF], 1);
 }
+
+fn leave_i() -> Quirks {
+    Quirks {
+        memory: MemoryQuirk::LeaveI,
+        ..Quirks::default()
+    }
+}
+
+const DATA: usize = 0x300;
+
+fn cpu_after(program: &[Instruction], data: &[u8], quirks: Quirks) -> Cpu {
+    let mut c = cpu_with_quirks(&[(START, &looping(START, program))], quirks);
+    c.memory.write(DATA, data).unwrap();
+    run_cycles(&mut c).unwrap();
+    c
+}
+
+#[test]
+fn new_cpu_advances_i_by_default() {
+    assert_eq!(Quirks::default().memory, MemoryQuirk::AdvanceI);
+}
+
+#[test]
+fn store_bcd_writes_hundreds_tens_and_ones() {
+    for (value, digits) in [
+        (0, [0, 0, 0]),
+        (7, [0, 0, 7]),
+        (42, [0, 4, 2]),
+        (234, [2, 3, 4]),
+        (255, [2, 5, 5]),
+    ] {
+        let c = cpu_after(
+            &[load(V5, value), load_index(0x300), StoreBcd { x: V5 }],
+            &[],
+            Quirks::default(),
+        );
+        assert_eq!(c.memory.read(DATA, 3).unwrap(), &digits, "{value}");
+        assert_eq!(c.i, 0x300, "{value}");
+    }
+}
+
+#[test]
+fn store_bcd_fits_in_the_last_three_bytes() {
+    let c = cpu_after(
+        &[load(V0, 123), load_index(0xFFD), StoreBcd { x: V0 }],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.memory.read(0xFFD, 3).unwrap(), &[1, 2, 3]);
+}
+
+#[test]
+fn store_bcd_past_the_end_is_index_out_of_bounds() {
+    let err = run_err(&[(
+        START,
+        &[load(V0, 123), load_index(0xFFE), StoreBcd { x: V0 }],
+    )]);
+    assert!(matches!(
+        err,
+        CpuError::IndexOutOfBounds { pc, i: 0xFFE, len: 3 } if pc.get() == 0x206
+    ));
+}
+
+#[test]
+fn store_bcd_with_i_past_the_end_of_memory_is_index_out_of_bounds() {
+    let err = run_err(&[(
+        START,
+        &[
+            load(V0, 0xFF),
+            load_index(0xFFF),
+            AddToIndex { x: V0 },
+            StoreBcd { x: V0 },
+        ],
+    )]);
+    assert!(matches!(
+        err,
+        CpuError::IndexOutOfBounds {
+            i: 0x10FE,
+            len: 3,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn store_registers_writes_v0_through_vx() {
+    let c = cpu_after(
+        &[
+            load(V0, 1),
+            load(V1, 2),
+            load(V2, 3),
+            load(V3, 4),
+            load_index(0x300),
+            StoreRegisters { x: V2 },
+        ],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.memory.read(DATA, 4).unwrap(), &[1, 2, 3, 0]);
+}
+
+#[test]
+fn store_registers_with_v0_stores_one_byte() {
+    let c = cpu_after(
+        &[
+            load(V0, 9),
+            load(V1, 8),
+            load_index(0x300),
+            StoreRegisters { x: V0 },
+        ],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.memory.read(DATA, 2).unwrap(), &[9, 0]);
+    assert_eq!(c.i, 0x301);
+}
+
+#[test]
+fn store_registers_advances_i_past_the_last_byte_by_default() {
+    let c = cpu_after(
+        &[load_index(0x300), StoreRegisters { x: V2 }],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.i, 0x303);
+}
+
+#[test]
+fn store_registers_leaves_i_with_the_leave_quirk() {
+    let c = cpu_after(
+        &[load_index(0x300), StoreRegisters { x: V2 }],
+        &[],
+        leave_i(),
+    );
+    assert_eq!(c.i, 0x300);
+}
+
+#[test]
+fn store_registers_fits_in_the_last_bytes() {
+    let c = cpu_after(
+        &[load(VF, 0xAB), load_index(0xFF0), StoreRegisters { x: VF }],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.memory.read(0xFFF, 1).unwrap(), &[0xAB]);
+    assert_eq!(c.i, 0x1000);
+}
+
+#[test]
+fn store_registers_past_the_end_is_index_out_of_bounds() {
+    let err = run_err(&[(START, &[load_index(0xFFF), StoreRegisters { x: V1 }])]);
+    assert!(matches!(
+        err,
+        CpuError::IndexOutOfBounds { pc, i: 0xFFF, len: 2 } if pc.get() == 0x204
+    ));
+}
+
+#[test]
+fn load_registers_reads_v0_through_vx() {
+    let c = cpu_after(
+        &[load(V3, 9), load_index(0x300), LoadRegisters { x: V2 }],
+        &[1, 2, 3, 4],
+        Quirks::default(),
+    );
+    assert_eq!(c.registers.up_to(V3), &[1, 2, 3, 9]);
+}
+
+#[test]
+fn load_registers_advances_i_past_the_last_byte_by_default() {
+    let c = cpu_after(
+        &[load_index(0x300), LoadRegisters { x: V2 }],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.i, 0x303);
+}
+
+#[test]
+fn load_registers_leaves_i_with_the_leave_quirk() {
+    let c = cpu_after(
+        &[load_index(0x300), LoadRegisters { x: V2 }],
+        &[],
+        leave_i(),
+    );
+    assert_eq!(c.i, 0x300);
+}
+
+#[test]
+fn load_registers_through_vf_overwrites_vf() {
+    let data: Vec<u8> = (1..=16).collect();
+    let c = cpu_after(
+        &[load_index(0x300), LoadRegisters { x: VF }],
+        &data,
+        Quirks::default(),
+    );
+    assert_eq!(c.registers.up_to(VF), data.as_slice());
+}
+
+#[test]
+fn load_registers_past_the_end_is_index_out_of_bounds() {
+    let err = run_err(&[(START, &[load_index(0xFFF), LoadRegisters { x: V1 }])]);
+    assert!(matches!(
+        err,
+        CpuError::IndexOutOfBounds { pc, i: 0xFFF, len: 2 } if pc.get() == 0x204
+    ));
+}
+
+#[test]
+fn store_then_load_round_trips_the_registers() {
+    let c = cpu_after(
+        &[
+            load(V0, 0x11),
+            load(V1, 0x22),
+            load(V2, 0x33),
+            load_index(0x300),
+            StoreRegisters { x: V2 },
+            load(V0, 0),
+            load(V1, 0),
+            load(V2, 0),
+            load_index(0x300),
+            LoadRegisters { x: V2 },
+        ],
+        &[],
+        Quirks::default(),
+    );
+    assert_eq!(c.registers.up_to(V2), &[0x11, 0x22, 0x33]);
+}

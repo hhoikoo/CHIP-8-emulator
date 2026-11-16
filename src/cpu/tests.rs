@@ -1691,3 +1691,11 @@ fn repeating_the_current_key_state_does_not_disturb_a_key_wait() {
     assert_eq!(c.get_register_value(V4), 0x7);
     assert_eq!(c.get_register_value(V0), 1);
 }
+
+#[test]
+fn pc_reports_the_next_instruction_to_run() {
+    let mut c = cpu(&[(START, &looping(START, &[load(V0, 1), load(V1, 2)]))]);
+    assert_eq!(c.pc().get(), 0x200);
+    c.step().unwrap();
+    assert_eq!(c.pc().get(), 0x202);
+}

@@ -223,6 +223,9 @@ fn roms_reach_their_outcome_within_their_cycle_budget() {
                         rom.name
                     );
                 }
+                let loop_pc = cpu.pc();
+                cpu.step().unwrap();
+                assert_eq!(cpu.pc(), loop_pc, "{}: not at its loop", rom.name);
             }
             (Err(err), Outcome::FailsWith { message_prefix }) => {
                 assert!(
@@ -232,6 +235,24 @@ fn roms_reach_their_outcome_within_their_cycle_budget() {
                 );
             }
             (result, _) => panic!("{}: unexpected result {result:?}", rom.name),
+        }
+    }
+}
+
+#[test]
+fn looping_roms_need_their_whole_cycle_budget() {
+    for rom in generated_roms() {
+        if let Outcome::Loops { .. } = rom.outcome {
+            let mut early = load(&rom);
+            early.run_for(rom.cycles - 1).unwrap();
+            let mut done = load(&rom);
+            done.run_for(rom.cycles).unwrap();
+            assert_ne!(
+                early.pc(),
+                done.pc(),
+                "{} loops before its budget",
+                rom.name
+            );
         }
     }
 }

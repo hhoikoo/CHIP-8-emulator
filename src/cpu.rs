@@ -86,6 +86,10 @@ impl Cpu {
         self
     }
 
+    pub fn pc(&self) -> ProgramCounter {
+        self.pc
+    }
+
     pub fn get_register_value(&self, register: Register) -> u8 {
         self.registers[register]
     }

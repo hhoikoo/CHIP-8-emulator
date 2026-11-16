@@ -155,6 +155,7 @@ fn paint(framebuffer: &Framebuffer, pixels: &mut [u32]) {
 }
 
 fn print_registers(cpu: &Cpu) -> Result<(), Box<dyn Error>> {
+    println!("PC = {:#06x}", cpu.pc());
     for value in 0..=0xF {
         let register = Register::try_from(value)?;
         println!("{register:?} = {:#04x}", cpu.get_register_value(register));

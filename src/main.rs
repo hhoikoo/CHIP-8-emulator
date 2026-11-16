@@ -76,6 +76,7 @@ fn run_in_window(
     while window.is_open() && !window.is_key_down(Key::Escape) && !stop.load(Ordering::Relaxed) {
         for _ in 0..clock.frames_due(Instant::now()) {
             cpu.run_for(INSTRUCTIONS_PER_FRAME)?;
+            cpu.tick_timers();
         }
         paint(cpu.framebuffer(), &mut pixels);
         window.update_with_buffer(&pixels, WIDTH, HEIGHT)?;

@@ -145,7 +145,8 @@ Work on this alongside the opcode groups: each item says which group it needs, s
     - [x] Use a fixed-timestep clock, so a 120 Hz (ProMotion) display still runs the emulator at 60 Hz
       - `FrameClock` in `src/frame_clock.rs`; after a stall it runs at most 5 frames and drops the rest
     - Needs: the window above, and the halt removal in Group 1 (the frame loop calls `run_for` each frame)
-  - [ ] Tick the delay and sound timers once per frame
+  - [x] Tick the delay and sound timers once per frame
+    - After each frame's instructions in `run_in_window`
     - Needs: Group 5 and the frame loop
   - [ ] Beep while the sound timer is above zero with `rodio` (optional)
     - Needs: Group 5

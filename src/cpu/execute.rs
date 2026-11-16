@@ -10,8 +10,10 @@ impl Cpu {
             Instruction::Call { addr } => self.call(addr)?,
             Instruction::LoadImmediate { x, nn } => self.load_immediate(x, nn),
             Instruction::LoadRegister { x, y } => self.load_register(x, y),
+            Instruction::LoadIndex { addr } => self.load_index(addr),
             Instruction::AddImmediate { x, nn } => self.add_immediate(x, nn),
             Instruction::AddWithCarry { x, y } => self.add_with_carry(x, y),
+            Instruction::AddToIndex { x } => self.add_to_index(x),
             Instruction::Or { x, y } => self.or(x, y),
             Instruction::And { x, y } => self.and(x, y),
             Instruction::Xor { x, y } => self.xor(x, y),
@@ -79,6 +81,10 @@ impl Cpu {
         self.registers[x] = self.registers[y];
     }
 
+    fn load_index(&mut self, addr: Addr) {
+        self.i = addr.get();
+    }
+
     fn add_immediate(&mut self, x: Register, nn: u8) {
         let register: &mut u8 = &mut self.registers[x];
         *register = register.wrapping_add(nn);
@@ -91,6 +97,10 @@ impl Cpu {
         let (val, overflow) = arg1.overflowing_add(arg2);
         self.registers[x] = val;
         self.registers[Register::VF] = u8::from(overflow);
+    }
+
+    fn add_to_index(&mut self, x: Register) {
+        self.i = self.i.wrapping_add(u16::from(self.registers[x]));
     }
 
     fn or(&mut self, x: Register, y: Register) {

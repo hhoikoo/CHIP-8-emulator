@@ -20,6 +20,11 @@ pub enum CpuError {
     StackUnderflow {
         pc: ProgramCounter,
     },
+    IndexOutOfBounds {
+        pc: ProgramCounter,
+        i: u16,
+        len: usize,
+    },
 }
 
 impl Display for CpuError {
@@ -40,6 +45,10 @@ impl Display for CpuError {
                 )
             }
             CpuError::StackUnderflow { pc } => write!(f, "Stack underflow at pc {pc:#06x}"),
+            CpuError::IndexOutOfBounds { pc, i, len } => write!(
+                f,
+                "Memory access of {len} bytes at I = {i:#06x} (pc {pc:#06x}) runs past the end of memory"
+            ),
         }
     }
 }

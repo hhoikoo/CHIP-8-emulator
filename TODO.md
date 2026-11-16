@@ -63,14 +63,17 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
         - `run(should_stop)` runs until the closure says stop; `run_for(cycles)` runs exactly that many; `cargo run -- <rom>` stops on Ctrl-C and prints the registers
   - [ ] Group 2: index register `I`
     - Needs: nothing
-    - [ ] Add a 16-bit `I` register to `Cpu`
-    - [ ] Add a `CpuError` variant for reads and writes at `I` past the end of memory
-    - [ ] `ANNN` `I = NNN`
-    - [ ] `FX1E` `I += VX`
+    - [x] Add a 16-bit `I` register to `Cpu`
+    - [x] Add a `CpuError` variant for reads and writes at `I` past the end of memory
+      - `IndexOutOfBounds { pc, i, len }`; `I` itself may hold any 16-bit value, only the access is checked
+    - [x] `ANNN` `I = NNN`
+    - [x] `FX1E` `I += VX`
+      - Wraps at 16 bits and leaves `VF` alone (setting `VF` past `0xFFF` is an Amiga-only quirk)
     - [ ] `FX33` store `VX` as 3 decimal digits at `I`, `I+1`, `I+2`
     - [ ] `FX55` store `V0` to `VX` in memory starting at `I`
     - [ ] `FX65` load `V0` to `VX` from memory starting at `I`
-    - [ ] Decide the memory quirk: `FX55`/`FX65` advance `I` (original) or leave it (CHIP-48, SUPER-CHIP)
+    - [x] Decide the memory quirk: `FX55`/`FX65` advance `I` (original) or leave it (CHIP-48, SUPER-CHIP)
+      - Configurable with `Quirks { memory: MemoryQuirk }`, `AdvanceI` by default
   - [ ] Group 3: font
     - Needs: Group 2 (`FX29` sets `I`)
     - [ ] Add the standard font: 16 hex digits (`0`–`F`), 5 bytes each

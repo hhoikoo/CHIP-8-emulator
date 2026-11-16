@@ -32,6 +32,12 @@ fn jump(addr: u16) -> Instruction {
     }
 }
 
+fn load_index(addr: u16) -> Instruction {
+    LoadIndex {
+        addr: Addr::new(addr).unwrap(),
+    }
+}
+
 fn jump_with_offset(addr: u16) -> Instruction {
     JumpWithOffset {
         addr: Addr::new(addr).unwrap(),
@@ -366,6 +372,15 @@ fn error_messages() {
             .to_string()
             .starts_with("Stack overflow: CALL 0x0200 at pc 0x0202")
     );
+    assert_eq!(
+        CpuError::IndexOutOfBounds {
+            pc: ProgramCounter::new(0x204),
+            i: 0xFFE,
+            len: 3,
+        }
+        .to_string(),
+        "Memory access of 3 bytes at I = 0x0ffe (pc 0x0204) runs past the end of memory"
+    );
 }
 
 #[test]
@@ -639,6 +654,68 @@ fn shift_vx_in_place() -> Quirks {
 
 fn after(program: &[Instruction]) -> Registers {
     registers_after(program, Quirks::default())
+}
+
+fn index_after(program: &[Instruction]) -> u16 {
+    let mut c = cpu(&[(START, &looping(START, program))]);
+    run_cycles(&mut c).unwrap();
+    c.i
+}
+
+#[test]
+fn new_cpu_has_a_zeroed_index() {
+    assert_eq!(cpu(&[(START, &looping(START, &[]))]).i, 0);
+}
+
+#[test]
+fn load_index_sets_i() {
+    assert_eq!(index_after(&[load_index(0xABC)]), 0xABC);
+    assert_eq!(index_after(&[load_index(0x123), load_index(0x456)]), 0x456);
+}
+
+#[test]
+fn load_index_leaves_the_registers_alone() {
+    assert_eq!(after(&[load_index(0xFFF)]), Registers::default());
+}
+
+#[test]
+fn add_to_index_adds_vx() {
+    assert_eq!(
+        index_after(&[load(V3, 0x10), load_index(0x300), AddToIndex { x: V3 }]),
+        0x310
+    );
+}
+
+#[test]
+fn add_to_index_can_go_past_the_end_of_memory() {
+    assert_eq!(
+        index_after(&[load(V0, 0xFF), load_index(0xFFF), AddToIndex { x: V0 }]),
+        0x10FE
+    );
+}
+
+#[test]
+fn add_to_index_leaves_vf_alone() {
+    let r = after(&[
+        load(VF, 7),
+        load(V0, 0xFF),
+        load_index(0xFFF),
+        AddToIndex { x: V0 },
+    ]);
+    assert_eq!(r[VF], 7);
+    let r = after(&[load(V0, 1), AddToIndex { x: V0 }]);
+    assert_eq!(r[VF], 0);
+}
+
+#[test]
+fn add_to_index_wraps_at_16_bits() {
+    let mut c = cpu(&[(
+        START,
+        &looping(START, &[load(V0, 0x20), AddToIndex { x: V0 }]),
+    )]);
+    c.i = 0xFFF0;
+    c.run_for(2).unwrap();
+    assert_eq!(c.i, 0x0010);
 }
 
 #[test]

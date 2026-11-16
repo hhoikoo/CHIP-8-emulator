@@ -27,6 +27,7 @@ pub struct Cpu {
     stack: [ProgramCounter; STACK_SIZE],
     stack_ptr: usize,
     quirks: Quirks,
+    i: u16,
 }
 
 impl Cpu {
@@ -45,6 +46,7 @@ impl Cpu {
             stack: [ProgramCounter::new(0); STACK_SIZE],
             stack_ptr: 0,
             quirks,
+            i: 0,
         }
     }
 

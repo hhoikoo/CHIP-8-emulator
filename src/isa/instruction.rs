@@ -17,8 +17,10 @@ pub enum Instruction {
     Call { addr: Addr },
     LoadImmediate { x: Register, nn: u8 },
     LoadRegister { x: Register, y: Register },
+    LoadIndex { addr: Addr },
     AddImmediate { x: Register, nn: u8 },
     AddWithCarry { x: Register, y: Register },
+    AddToIndex { x: Register },
     Or { x: Register, y: Register },
     And { x: Register, y: Register },
     Xor { x: Register, y: Register },
@@ -48,11 +50,14 @@ const SUBTRACT_REVERSED: Nibble = Nibble::expect_new(0x7);
 const SHIFT_RIGHT: Nibble = Nibble::expect_new(0x6);
 const SHIFT_LEFT: Nibble = Nibble::expect_new(0xE);
 const JUMP_WITH_OFFSET: Nibble = Nibble::expect_new(0xB);
+const LOAD_INDEX: Nibble = Nibble::expect_new(0xA);
 const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
 const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
 const SKIP_IF_EQUAL: Nibble = Nibble::expect_new(0x5);
 const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
+const MISC: Nibble = Nibble::expect_new(0xF);
 const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
+const ADD_TO_INDEX: u8 = 0x1E;
 
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
@@ -79,12 +84,17 @@ impl TryFrom<Opcode> for Instruction {
                 SHIFT_LEFT => Ok(Self::ShiftLeft { x, y }),
                 _ => Err(UnknownOpcodeError { opcode }),
             },
+            [LOAD_INDEX, ..] => Ok(Self::LoadIndex { addr }),
             [ADD_IMMEDIATE, ..] => Ok(Self::AddImmediate { x, nn }),
             [JUMP_WITH_OFFSET, ..] => Ok(Self::JumpWithOffset { addr }),
             [SKIP_IF_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfEqualImmediate { x, nn }),
             [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
             [SKIP_IF_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfEqual { x, y }),
             [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
+            [MISC, ..] => match nn {
+                ADD_TO_INDEX => Ok(Self::AddToIndex { x }),
+                _ => Err(UnknownOpcodeError { opcode }),
+            },
             _ => Err(UnknownOpcodeError { opcode }),
         }
     }
@@ -110,8 +120,10 @@ impl Instruction {
             Self::Call { addr } => nnn(CALL, addr),
             Self::LoadImmediate { x, nn } => xnn(LOAD_IMMEDIATE, x, nn),
             Self::LoadRegister { x, y } => xyn(REGISTER_OP, x, y, LOAD_REGISTER),
+            Self::LoadIndex { addr } => nnn(LOAD_INDEX, addr),
             Self::AddImmediate { x, nn } => xnn(ADD_IMMEDIATE, x, nn),
             Self::AddWithCarry { x, y } => xyn(REGISTER_OP, x, y, ADD_WITH_CARRY),
+            Self::AddToIndex { x } => xnn(MISC, x, ADD_TO_INDEX),
             Self::Or { x, y } => xyn(REGISTER_OP, x, y, OR),
             Self::And { x, y } => xyn(REGISTER_OP, x, y, AND),
             Self::Xor { x, y } => xyn(REGISTER_OP, x, y, XOR),

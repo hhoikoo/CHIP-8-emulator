@@ -28,7 +28,9 @@ Currently supported instructions:
 | `8XY7` | `VX = VY - VX`, `VF = 1` if no borrow |
 | `8XYE` | `VX = VY << 1`, `VF` = bit shifted out (quirk: shift `VX` in place) |
 | `9XY0` | skip next if `VX != VY` |
+| `ANNN` | `I = NNN` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
+| `FX1E` | `I += VX` |
 
 The rest, and the planned assembler, are in [TODO.md](TODO.md).
 

@@ -129,7 +129,8 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - Needs a new press: a key already down when `FX0A` starts doesn't count until it's released and pressed again. `VX` gets the first key pressed, once that key is released
   - [ ] Group 8: quirk settings and the remaining real-ROM tests
     - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)
-    - [ ] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
+    - [x] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
+      - `test_opcode.ch8` is in `tests/roms/corax89/` (MIT), pinned to commit `6a2cc38`: 18 `OK`s after 201 cycles
       - Needs: Groups 1, 2 and 4
     - [x] Real-ROM test: `4-flags.ch8` (`VF` as input and output)
       - Needs: Groups 1, 2 and 4

@@ -31,7 +31,7 @@ struct TestRom {
     preset: Option<(usize, u8)>,
 }
 
-const TEST_ROMS: [TestRom; 5] = [
+const TEST_ROMS: [TestRom; 6] = [
     TestRom {
         dir: "timendus",
         name: "1-chip8-logo",
@@ -61,6 +61,12 @@ const TEST_ROMS: [TestRom; 5] = [
         name: "5-quirks",
         budget: Budget::Frames(300),
         preset: Some((CHOSEN_PLATFORM_ADDR, CHIP8_PLATFORM)),
+    },
+    TestRom {
+        dir: "corax89",
+        name: "test_opcode",
+        budget: Budget::Cycles(201),
+        preset: None,
     },
 ];
 

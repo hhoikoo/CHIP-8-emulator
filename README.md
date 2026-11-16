@@ -75,4 +75,4 @@ The first `cargo test` installs a pre-commit hook (via [husky-rs](https://crates
 
 ## License
 
-[MIT](LICENSE). The test ROMs in `tests/roms/timendus/` are GPL-3.0 (see [`tests/roms/README.md`](tests/roms/README.md)).
+[MIT](LICENSE). The test ROMs in `tests/roms/timendus/` are GPL-3.0, and `tests/roms/corax89/` is MIT with its own notice (see [`tests/roms/README.md`](tests/roms/README.md)).

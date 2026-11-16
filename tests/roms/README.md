@@ -43,6 +43,18 @@ They are GPL-3.0, and their license is in `timendus/LICENSE`. They are test data
 
 A pass mark is `#.#`, `##.`, `#..`, and a fail mark is an X (`#.#`, `.#.`, `#.#`). To check that a fail would show: with the `8XY4` carry broken on purpose, `4-flags` draws 2 fail marks. In `5-quirks`, flipping any one of the six quirks turns its pass mark into a fail mark.
 
+## corax89 test ROM (`corax89/`)
+
+`test_opcode.ch8` from [corax89/chip8-test-rom](https://github.com/corax89/chip8-test-rom), copied unchanged from commit [`6a2cc38`](https://github.com/corax89/chip8-test-rom/tree/6a2cc38be6f5e527221353df024b840a86bc8e5f). It's MIT, and its license and copyright notice are in `corax89/LICENSE`.
+
+`tests/real_roms.rs` checks it like the Timendus ROMs above:
+
+| ROM | SHA-256 | Cycles | Image |
+|---|---|---|---|
+| `test_opcode.ch8` | `67759cf9f5b27db66f0769ea8fd0b30ba220f46d6f19f8ba4fd4108d986ce0ab` | 201 | 18 opcode names, each followed by `OK` (a failed check shows `NO`), matching the screenshot in the ROM's README |
+
+To check that a fail would show: with the `8XY5` result broken on purpose, its row shows `NO`. Breaking only the `8XY5` flag changes nothing, because this ROM doesn't check `VF` there.
+
 ## Other real ROMs (not used yet)
 
 Before adding one, pin the raw URL to a commit and record a checksum.
@@ -51,7 +63,7 @@ This repo is MIT, so only ROMs with a compatible license can be committed:
 
 | ROM | Source | License | Can commit? | Needs | How to check it |
 |---|---|---|---|---|---|
-| `test_opcode.ch8` (corax89) | [corax89/chip8-test-rom](https://github.com/corax89/chip8-test-rom) | MIT | yes, with its notice | skips, `8XY_`, `ANNN`, `FX33`, `FX55`, `DXYN` | golden framebuffer |
+| `test_opcode.ch8` (corax89) | [corax89/chip8-test-rom](https://github.com/corax89/chip8-test-rom) | MIT | **added** | skips, `8XY_`, `ANNN`, `FX33`, `FX55`, `DXYN` | golden framebuffer |
 | chip8Archive games, e.g. `br8kout` | [JohnEarnest/chip8Archive](https://github.com/JohnEarnest/chip8Archive) | CC0 (stated in the README) | yes | `CXNN`, keypad, timers | smoke test only: needs a seeded RNG and scripted keys |
 | `1-chip8-logo.ch8` (Timendus) | [Timendus/chip8-test-suite](https://github.com/Timendus/chip8-test-suite) | GPL-3.0 | **added** | `00E0`, `6XNN`, `ANNN`, `DXYN`, `1NNN` | framebuffer after 39 cycles |
 | `2-ibm-logo.ch8` (Timendus) | same | GPL-3.0; the original IBM logo bytes have no known license | **added** | adds `7XNN` and unaligned `DXYN` | framebuffer after 20 cycles |

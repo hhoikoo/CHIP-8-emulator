@@ -15,7 +15,7 @@ use chip8_emulator::{
     examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
     frame_clock::FrameClock,
     framebuffer::{Framebuffer, HEIGHT, WIDTH},
-    isa::register::Register,
+    isa::{nibble::Nibble, register::Register},
     memory::PROGRAM_START,
     rom::Rom,
 };
@@ -28,6 +28,31 @@ const INSTRUCTIONS_PER_FRAME: usize = 12;
 const MAX_CATCH_UP_FRAMES: u32 = 5;
 const LIT: u32 = 0x00E8_E8E8;
 const DARK: u32 = 0x0018_1818;
+const KEYMAP: [(Key, Nibble); 16] = [
+    (Key::Key1, keypad_key(0x1)),
+    (Key::Key2, keypad_key(0x2)),
+    (Key::Key3, keypad_key(0x3)),
+    (Key::Key4, keypad_key(0xC)),
+    (Key::Q, keypad_key(0x4)),
+    (Key::W, keypad_key(0x5)),
+    (Key::E, keypad_key(0x6)),
+    (Key::R, keypad_key(0xD)),
+    (Key::A, keypad_key(0x7)),
+    (Key::S, keypad_key(0x8)),
+    (Key::D, keypad_key(0x9)),
+    (Key::F, keypad_key(0xE)),
+    (Key::Z, keypad_key(0xA)),
+    (Key::X, keypad_key(0x0)),
+    (Key::C, keypad_key(0xB)),
+    (Key::V, keypad_key(0xF)),
+];
+
+const fn keypad_key(value: u8) -> Nibble {
+    match Nibble::new(value) {
+        Ok(key) => key,
+        Err(_) => panic!("keypad keys go from 0x0 to 0xF"),
+    }
+}
 
 fn main() -> ExitCode {
     let result = match env::args_os().nth(1) {
@@ -74,6 +99,7 @@ fn run_in_window(
     let mut pixels = vec![DARK; WIDTH * HEIGHT];
 
     while window.is_open() && !window.is_key_down(Key::Escape) && !stop.load(Ordering::Relaxed) {
+        update_keypad(cpu, window);
         for _ in 0..clock.frames_due(Instant::now()) {
             cpu.run_for(INSTRUCTIONS_PER_FRAME)?;
             cpu.tick_timers();
@@ -82,6 +108,16 @@ fn run_in_window(
         window.update_with_buffer(&pixels, WIDTH, HEIGHT)?;
     }
     Ok(())
+}
+
+fn update_keypad(cpu: &mut Cpu, window: &Window) {
+    for (key, keypad_key) in KEYMAP {
+        if window.is_key_down(key) {
+            cpu.press_key(keypad_key);
+        } else {
+            cpu.release_key(keypad_key);
+        }
+    }
 }
 
 fn seed_from_clock() -> u64 {

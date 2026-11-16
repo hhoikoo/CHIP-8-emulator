@@ -55,7 +55,17 @@ What's left, and the planned assembler, is in [TODO.md](TODO.md).
 cargo run -- tests/roms/timendus/2-ibm-logo.ch8
 ```
 
-This opens a window that shows the screen at ×16 and runs 12 instructions per 60 Hz frame. Close it with Escape, the close button or Ctrl-C. It prints the registers when it stops, plus the error if the ROM failed.
+This opens a window that shows the screen at ×16 and runs 12 instructions per 60 Hz frame. The keypad is on the left of the keyboard:
+
+```text
+Keyboard      CHIP-8 keypad
+1 2 3 4       1 2 3 C
+Q W E R       4 5 6 D
+A S D F       7 8 9 E
+Z X C V       A 0 B F
+```
+
+Close it with Escape, the close button or Ctrl-C. It prints the registers when it stops, plus the error if the ROM failed.
 
 `cargo run` with no ROM runs a small built-in demo without a window and prints `5 + (2 * 10) + (2 * 10) = 45`.
 

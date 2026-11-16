@@ -161,7 +161,8 @@ Work on this alongside the opcode groups: each item says which group it needs, s
     - Needs: Group 5 and the frame loop
   - [ ] Beep while the sound timer is above zero with `rodio` (optional)
     - Needs: Group 5
-  - [ ] Map the keyboard to the 16-key keypad (`1234`/`QWER`/`ASDF`/`ZXCV`)
+  - [x] Map the keyboard to the 16-key keypad (`1234`/`QWER`/`ASDF`/`ZXCV`)
+    - `KEYMAP` in `src/main.rs`; each window update presses the keys that are down and releases the rest
     - Needs: Group 7
   - [ ] Play a real Pong ROM
     - Needs: every opcode group (Pong uses `CXNN`, timers and keys)

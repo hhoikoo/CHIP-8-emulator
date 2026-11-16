@@ -1675,3 +1675,19 @@ fn key_presses_outside_a_wait_change_no_register() {
     run_cycles(&mut c).unwrap();
     assert_eq!(c.registers, Registers::default());
 }
+
+#[test]
+fn repeating_the_current_key_state_does_not_disturb_a_key_wait() {
+    let mut c = waiting_for_key();
+    c.press_key(key(0x7));
+    c.press_key(key(0x7));
+    c.release_key(key(0x8));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+
+    c.release_key(key(0x7));
+    c.release_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V4), 0x7);
+    assert_eq!(c.get_register_value(V0), 1);
+}

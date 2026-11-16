@@ -36,6 +36,7 @@ Currently supported instructions:
 | `EX9E` | skip next if key `VX` is down (`VX > 0xF` is an error) |
 | `EXA1` | skip next if key `VX` is up (`VX > 0xF` is an error) |
 | `FX07` | `VX` = delay timer |
+| `FX0A` | wait for a key to be pressed and released, then `VX` = that key |
 | `FX15` | delay timer = `VX` |
 | `FX18` | sound timer = `VX` |
 | `FX1E` | `I += VX` |

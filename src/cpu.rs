@@ -31,6 +31,8 @@ pub const DEFAULT_SEED: u64 = 0;
 enum State {
     Running,
     WaitingForFrame,
+    WaitingForKeyPress { x: Register },
+    WaitingForKeyRelease { x: Register, key: Nibble },
 }
 
 #[derive(Debug)]
@@ -93,11 +95,22 @@ impl Cpu {
     }
 
     pub fn press_key(&mut self, key: Nibble) {
+        if !self.keypad.is_pressed(key)
+            && let State::WaitingForKeyPress { x } = self.state
+        {
+            self.state = State::WaitingForKeyRelease { x, key };
+        }
         self.keypad.press(key);
     }
 
     pub fn release_key(&mut self, key: Nibble) {
         self.keypad.release(key);
+        if let State::WaitingForKeyRelease { x, key: awaited } = self.state
+            && awaited == key
+        {
+            self.registers[x] = key.get();
+            self.state = State::Running;
+        }
     }
 
     pub fn sound_active(&self) -> bool {

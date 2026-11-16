@@ -45,6 +45,7 @@ impl Cpu {
             Instruction::SetSoundTimer { x } => self.sound_timer = self.registers[x],
             Instruction::SkipIfKeyPressed { x } => self.skip_if_key(x, true)?,
             Instruction::SkipIfKeyNotPressed { x } => self.skip_if_key(x, false)?,
+            Instruction::WaitForKey { x } => self.state = State::WaitingForKeyPress { x },
             Instruction::LoadRandom { x, nn } => self.registers[x] = self.random.next_byte() & nn,
         }
         Ok(())

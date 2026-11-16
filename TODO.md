@@ -116,15 +116,17 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Add the seedable source to `Cpu`, injectable so tests stay deterministic
       - Seeded with `DEFAULT_SEED` (0) unless `Cpu::seeded(seed)` picks another; the window seeds it from the clock
     - [x] `CXNN` `VX` = random byte `& NN`
-  - [ ] Group 7: keypad
+  - [x] Group 7: keypad
     - Needs: nothing
     - [x] Add state for 16 keys, with an API to press and release them
       - `Keypad` in `src/keypad.rs`; `Cpu::press_key`/`release_key` take a `Nibble`, so there is no key past `0xF`
-    - [ ] Add a `CpuState` for waiting on a key press into `VX`
+    - [x] Add a `CpuState` for waiting on a key press into `VX`
+      - A private `State` in `src/cpu.rs`: `Running`, `WaitingForFrame`, `WaitingForKeyPress { x }`, `WaitingForKeyRelease { x, key }`; `step` does nothing while waiting
     - [x] `EX9E` skip next if key `VX` is pressed
     - [x] `EXA1` skip next if key `VX` is not pressed
       - `VX > 0xF` in either is `CpuError::KeyOutOfRange`, like `FX29`
-    - [ ] `FX0A` wait for a key press and release, store it in `VX`
+    - [x] `FX0A` wait for a key press and release, store it in `VX`
+      - Needs a new press: a key already down when `FX0A` starts doesn't count until it's released and pressed again. `VX` gets the first key pressed, once that key is released
   - [ ] Group 8: quirk settings and the remaining real-ROM tests
     - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)
     - [ ] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)

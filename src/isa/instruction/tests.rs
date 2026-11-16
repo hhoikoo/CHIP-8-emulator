@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 2 + 10 * 0x1000 + 11 * 0x100 + 10 * 0x10;
+const DECODABLE_OPCODE_COUNT: usize = 2 + 10 * 0x1000 + 11 * 0x100 + 11 * 0x10;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -84,6 +84,7 @@ fn decodes_each_instruction() {
     assert_eq!(decode(0xFA65), Ok(Instruction::LoadRegisters { x: VA }));
     assert_eq!(decode(0xFA29), Ok(Instruction::LoadFontCharacter { x: VA }));
     assert_eq!(decode(0xFA07), Ok(Instruction::ReadDelayTimer { x: VA }));
+    assert_eq!(decode(0xFA0A), Ok(Instruction::WaitForKey { x: VA }));
     assert_eq!(decode(0xFA15), Ok(Instruction::SetDelayTimer { x: VA }));
     assert_eq!(decode(0xFA18), Ok(Instruction::SetSoundTimer { x: VA }));
     assert_eq!(
@@ -135,7 +136,8 @@ fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
         0x0000, 0x00E1, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
         0xF000, 0xF01F, 0xF02E, 0xF0E1, 0xF034, 0xF056, 0xF066, 0xF053, 0xF028, 0xF030, 0xF008,
-        0xF017, 0xF014, 0xF019, 0xF016, 0xE000, 0xE09F, 0xE09D, 0xE0A0, 0xE0A2, 0xE01E,
+        0xF017, 0xF014, 0xF019, 0xF016, 0xE000, 0xE09F, 0xE09D, 0xE0A0, 0xE0A2, 0xE01E, 0xF00B,
+        0xF009,
     ] {
         assert_eq!(
             decode(opcode),
@@ -179,7 +181,7 @@ fn only_the_known_operations_decode_in_the_e_family() {
 
 #[test]
 fn only_the_known_operations_decode_in_the_f_family() {
-    let known_operations = [0x07, 0x15, 0x18, 0x1E, 0x29, 0x33, 0x55, 0x65];
+    let known_operations = [0x07, 0x0A, 0x15, 0x18, 0x1E, 0x29, 0x33, 0x55, 0x65];
     let decoded: Vec<u16> = (0xF000..=0xFFFF).filter(|&op| decode(op).is_ok()).collect();
     assert_eq!(decoded.len(), known_operations.len() * 0x10);
     assert!(
@@ -231,6 +233,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
                 Some(Instruction::SkipIfKeyNotPressed { x })
             }
             0xF000..=0xFFFF if opcode & 0xFF == 0x07 => Some(Instruction::ReadDelayTimer { x }),
+            0xF000..=0xFFFF if opcode & 0xFF == 0x0A => Some(Instruction::WaitForKey { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x15 => Some(Instruction::SetDelayTimer { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x18 => Some(Instruction::SetSoundTimer { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x1E => Some(Instruction::AddToIndex { x }),
@@ -308,6 +311,7 @@ fn encodes_each_instruction() {
         (Instruction::LoadRegisters { x: VA }, 0xFA65),
         (Instruction::LoadFontCharacter { x: VA }, 0xFA29),
         (Instruction::ReadDelayTimer { x: VA }, 0xFA07),
+        (Instruction::WaitForKey { x: VA }, 0xFA0A),
         (Instruction::SetDelayTimer { x: VA }, 0xFA15),
         (Instruction::SetSoundTimer { x: VA }, 0xFA18),
         (Instruction::LoadRandom { x: VA, nn: 0x0F }, 0xCA0F),

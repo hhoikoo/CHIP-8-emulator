@@ -44,6 +44,7 @@ pub enum Instruction {
     LoadRandom { x: Register, nn: u8 },
     SkipIfKeyPressed { x: Register },
     SkipIfKeyNotPressed { x: Register },
+    WaitForKey { x: Register },
 }
 
 const CLEAR_SCREEN: [Nibble; 4] = Opcode::new(0x00E0).nibbles();
@@ -81,6 +82,7 @@ const STORE_REGISTERS: u8 = 0x55;
 const LOAD_REGISTERS: u8 = 0x65;
 const LOAD_FONT_CHARACTER: u8 = 0x29;
 const READ_DELAY_TIMER: u8 = 0x07;
+const WAIT_FOR_KEY: u8 = 0x0A;
 const SET_DELAY_TIMER: u8 = 0x15;
 const SET_SOUND_TIMER: u8 = 0x18;
 
@@ -131,6 +133,7 @@ impl TryFrom<Opcode> for Instruction {
                 LOAD_REGISTERS => Ok(Self::LoadRegisters { x }),
                 LOAD_FONT_CHARACTER => Ok(Self::LoadFontCharacter { x }),
                 READ_DELAY_TIMER => Ok(Self::ReadDelayTimer { x }),
+                WAIT_FOR_KEY => Ok(Self::WaitForKey { x }),
                 SET_DELAY_TIMER => Ok(Self::SetDelayTimer { x }),
                 SET_SOUND_TIMER => Ok(Self::SetSoundTimer { x }),
                 _ => Err(UnknownOpcodeError { opcode }),
@@ -188,6 +191,7 @@ impl Instruction {
             Self::LoadRandom { x, nn } => xnn(LOAD_RANDOM, x, nn),
             Self::SkipIfKeyPressed { x } => xnn(KEY_OP, x, SKIP_IF_KEY_PRESSED),
             Self::SkipIfKeyNotPressed { x } => xnn(KEY_OP, x, SKIP_IF_KEY_NOT_PRESSED),
+            Self::WaitForKey { x } => xnn(MISC, x, WAIT_FOR_KEY),
         }
     }
 }

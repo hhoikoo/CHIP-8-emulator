@@ -1592,3 +1592,86 @@ fn key_skips_past_0xf_are_key_out_of_range() {
         "No key 0x10 at pc 0x0204; keys go up to 0x0f"
     );
 }
+
+fn waiting_for_key() -> Cpu {
+    let mut c = cpu(&[(START, &looping(START, &[WaitForKey { x: V4 }, load(V0, 1)]))]);
+    run_cycles(&mut c).unwrap();
+    c
+}
+
+#[test]
+fn wait_for_key_blocks_until_a_key_is_pressed_and_released() {
+    let mut c = waiting_for_key();
+    assert_eq!(c.pc.get(), 0x202);
+    assert_eq!(c.get_register_value(V0), 0);
+
+    c.press_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+
+    c.release_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V4), 0x7);
+    assert_eq!(c.get_register_value(V0), 1);
+}
+
+#[test]
+fn wait_for_key_ignores_a_key_held_down_before_it_started() {
+    let mut c = cpu(&[(START, &looping(START, &[WaitForKey { x: V4 }, load(V0, 1)]))]);
+    c.press_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    c.press_key(key(0x7));
+    c.release_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+
+    c.press_key(key(0x7));
+    c.release_key(key(0x7));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 1);
+}
+
+#[test]
+fn wait_for_key_stores_the_first_pressed_key_once_it_is_released() {
+    let mut c = waiting_for_key();
+    c.press_key(key(0x2));
+    c.press_key(key(0xE));
+    c.release_key(key(0xE));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+
+    c.release_key(key(0x2));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V4), 0x2);
+    assert_eq!(c.get_register_value(V0), 1);
+}
+
+#[test]
+fn ticks_do_not_end_a_key_wait_but_still_count_the_timers_down() {
+    let mut c = cpu(&[(
+        START,
+        &looping(
+            START,
+            &[
+                load(V1, 5),
+                SetDelayTimer { x: V1 },
+                WaitForKey { x: V4 },
+                load(V0, 1),
+            ],
+        ),
+    )]);
+    run_cycles(&mut c).unwrap();
+    c.tick_timers();
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 0);
+    assert_eq!(c.delay_timer, 4);
+}
+
+#[test]
+fn key_presses_outside_a_wait_change_no_register() {
+    let mut c = cpu(&[(START, &looping(START, &[]))]);
+    c.press_key(key(0x3));
+    c.release_key(key(0x3));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.registers, Registers::default());
+}

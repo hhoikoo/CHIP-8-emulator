@@ -307,12 +307,12 @@ fn jump_to_itself_keeps_the_pc_in_place() {
 fn va_after_jump_with_offset(quirks: Quirks) -> u8 {
     let main = [load(V0, 0x04), load(V1, 0x10), jump_with_offset(0x120)];
     let target_with_v0 = looping(0x124, &[load(VA, 1)]);
-    let target_with_v1 = looping(0x030, &[load(VA, 2)]);
+    let target_with_v1 = looping(0x130, &[load(VA, 2)]);
     let mut c = cpu_with_quirks(
         &[
             (START, &main),
             (0x124, &target_with_v0),
-            (0x030, &target_with_v1),
+            (0x130, &target_with_v1),
         ],
         quirks,
     );
@@ -341,7 +341,7 @@ fn jump_with_offset_past_the_end_of_memory_is_pc_out_of_bounds() {
 }
 
 #[test]
-fn jump_with_offset_with_the_vx_quirk_adds_vx_to_the_low_byte() {
+fn jump_with_offset_with_the_vx_quirk_keeps_x_in_the_address() {
     let quirks = Quirks {
         jump: JumpQuirk::AddVx,
         ..Quirks::default()
@@ -351,8 +351,8 @@ fn jump_with_offset_with_the_vx_quirk_adds_vx_to_the_low_byte() {
         quirks,
     );
     c.step().unwrap();
-    c.step().unwrap();
-    assert_eq!(c.pc.get(), 0x1FE);
+    let err = c.step().and_then(|()| c.step()).unwrap_err();
+    assert!(matches!(err, CpuError::PcOutOfBounds { pc } if pc.get() == 0x10FE));
 }
 
 #[test]

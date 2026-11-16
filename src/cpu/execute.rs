@@ -70,9 +70,9 @@ impl Cpu {
         let new_addr_value = match self.quirks.jump {
             JumpQuirk::AddV0 => addr.get() + u16::from(self.registers[Register::V0]),
             JumpQuirk::AddVx => {
-                let [register, nn] = addr.get().to_be_bytes();
-                let register = Register::from(Nibble::expect_new(register));
-                u16::from(nn) + u16::from(self.registers[register])
+                let [high_nibble, _] = addr.get().to_be_bytes();
+                let register = Register::from(Nibble::expect_new(high_nibble));
+                addr.get() + u16::from(self.registers[register])
             }
         };
         self.pc = ProgramCounter::from(new_addr_value);

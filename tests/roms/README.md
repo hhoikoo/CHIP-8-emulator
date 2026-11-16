@@ -23,13 +23,14 @@ Tiny `.ch8` files built only from the opcodes the emulator supports. Their sourc
 
 ## Timendus test ROMs (`timendus/`)
 
-Four ROMs from [Timendus/chip8-test-suite](https://github.com/Timendus/chip8-test-suite), copied unchanged from `bin/` at commit [`742e9ea`](https://github.com/Timendus/chip8-test-suite/tree/742e9eac9f5d44466c1c9d83fcaa8158c6683cb1/bin).
+Five ROMs from [Timendus/chip8-test-suite](https://github.com/Timendus/chip8-test-suite), copied unchanged from `bin/` at commit [`742e9ea`](https://github.com/Timendus/chip8-test-suite/tree/742e9eac9f5d44466c1c9d83fcaa8158c6683cb1/bin).
 
 They are GPL-3.0, and their license is in `timendus/LICENSE`. They are test data only: nothing in the emulator links or embeds them, and the rest of this repo stays MIT.
 
-`tests/real_roms.rs` runs each ROM for its cycle budget and compares the screen with `golden/<rom>.txt`, which has 32 lines of 64 `#` (lit) and `.` (dark) characters:
+`tests/real_roms.rs` runs each ROM for its budget and compares the screen with `golden/<rom>.txt`, which has 32 lines of 64 `#` (lit) and `.` (dark) characters:
 
-- The image appears on exactly the last cycle of the budget, and it doesn't change in 10× as many cycles.
+- A budget in cycles runs with `DisplayWaitQuirk::DrawImmediately`, so it doesn't depend on frames. A budget in frames runs the default quirks, 12 instructions then one `tick_timers()` per frame, like the window.
+- The image appears on exactly the last cycle or frame of the budget, and it doesn't change in 10× as many.
 - `cargo test --test real_roms -- --ignored` rewrites the golden images. Check them by eye afterwards.
 
 | ROM | SHA-256 | Cycles | Image |
@@ -38,8 +39,9 @@ They are GPL-3.0, and their license is in `timendus/LICENSE`. They are test data
 | `2-ibm-logo.ch8` | `00072a250d2f7ccaa3ecc0182bac73e63c168abab96d7ea2df5eba6a4da49067` | 20 | the IBM logo (the budget matches the suite's docs) |
 | `3-corax+.ch8` | `1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0` | 306 | 22 pass marks and no fail marks |
 | `4-flags.ch8` | `f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa` | 952 | 47 pass marks and no fail marks |
+| `5-quirks.ch8` | `d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679` | 300 frames | 6 pass marks and no fail marks, with `1` preset at `0x1FF` to pick CHIP-8 |
 
-A pass mark is `#.#`, `##.`, `#..`, and a fail mark is an X (`#.#`, `.#.`, `#.#`). To check that a fail would show: with the `8XY4` carry broken on purpose, `4-flags` draws 2 fail marks.
+A pass mark is `#.#`, `##.`, `#..`, and a fail mark is an X (`#.#`, `.#.`, `#.#`). To check that a fail would show: with the `8XY4` carry broken on purpose, `4-flags` draws 2 fail marks. In `5-quirks`, flipping any one of the six quirks turns its pass mark into a fail mark.
 
 ## Other real ROMs (not used yet)
 
@@ -55,7 +57,7 @@ This repo is MIT, so only ROMs with a compatible license can be committed:
 | `2-ibm-logo.ch8` (Timendus) | same | GPL-3.0; the original IBM logo bytes have no known license | **added** | adds `7XNN` and unaligned `DXYN` | framebuffer after 20 cycles |
 | `3-corax+.ch8` (Timendus) | same | GPL-3.0 | **added** | skips, calls, `8XY_`, `FX1E`, `FX33`, `FX55`, `FX65` | golden framebuffer of the pass/fail marks |
 | `4-flags.ch8` (Timendus) | same | GPL-3.0 | **added** | `8XY_` with `VF` as input and output | golden framebuffer |
-| `5-quirks.ch8` (Timendus) | same | GPL-3.0 | decide first | timers, `BNNN`, `FX55`/`FX65`, display wait | write `1` to `0x1FF` first to pick CHIP-8; golden framebuffer |
+| `5-quirks.ch8` (Timendus) | same | GPL-3.0 | **added** | timers, `BNNN`, `FX55`/`FX65`, display wait | write `1` to `0x1FF` first to pick CHIP-8; golden framebuffer |
 | `6-keypad.ch8`, `7-beep.ch8` (Timendus) | same | GPL-3.0 | decide first | keypad, sound timer | needs scripted keys or timer checks |
 | Pong, Maze and other classics | [kripod/chip8-roms](https://github.com/kripod/chip8-roms) | unclear | no | varies | local smoke tests only |
 

@@ -131,11 +131,12 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)
     - [ ] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
       - Needs: Groups 1, 2 and 4
-    - [ ] Real-ROM test: `4-flags.ch8` (`VF` as input and output)
+    - [x] Real-ROM test: `4-flags.ch8` (`VF` as input and output)
       - Needs: Groups 1, 2 and 4
     - [x] Add a way to preset a single byte in memory before running (`Rom::new` only writes 2-byte words, so `0x1FF` would also overwrite `0x200`)
       - `Rom::with_byte(addr, byte)` adds a 1-byte segment, with the same bounds and overlap checks as the others
-    - [ ] Real-ROM test: `5-quirks.ch8` (preset `1` at `0x1FF` to pick CHIP-8)
+    - [x] Real-ROM test: `5-quirks.ch8` (preset `1` at `0x1FF` to pick CHIP-8)
+      - Runs 300 frames with the default quirks; all six quirks show a pass mark, and flipping any one of them shows a fail mark
       - Needs: every group, the quirk decisions and the byte preset above
 
 ## Display

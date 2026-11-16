@@ -5,27 +5,62 @@ use chip8_emulator::{
     rom::Rom,
 };
 
-struct TestRom {
-    name: &'static str,
-    cycles: usize,
+const INSTRUCTIONS_PER_FRAME: usize = 12;
+const CHOSEN_PLATFORM_ADDR: usize = 0x1FF;
+const CHIP8_PLATFORM: u8 = 1;
+
+#[derive(Clone, Copy)]
+enum Budget {
+    Cycles(usize),
+    Frames(usize),
 }
 
-const TEST_ROMS: [TestRom; 4] = [
+impl Budget {
+    fn scaled(self, f: impl Fn(usize) -> usize) -> Budget {
+        match self {
+            Budget::Cycles(n) => Budget::Cycles(f(n)),
+            Budget::Frames(n) => Budget::Frames(f(n)),
+        }
+    }
+}
+
+struct TestRom {
+    dir: &'static str,
+    name: &'static str,
+    budget: Budget,
+    preset: Option<(usize, u8)>,
+}
+
+const TEST_ROMS: [TestRom; 5] = [
     TestRom {
+        dir: "timendus",
         name: "1-chip8-logo",
-        cycles: 39,
+        budget: Budget::Cycles(39),
+        preset: None,
     },
     TestRom {
+        dir: "timendus",
         name: "2-ibm-logo",
-        cycles: 20,
+        budget: Budget::Cycles(20),
+        preset: None,
     },
     TestRom {
+        dir: "timendus",
         name: "3-corax+",
-        cycles: 306,
+        budget: Budget::Cycles(306),
+        preset: None,
     },
     TestRom {
+        dir: "timendus",
         name: "4-flags",
-        cycles: 952,
+        budget: Budget::Cycles(952),
+        preset: None,
+    },
+    TestRom {
+        dir: "timendus",
+        name: "5-quirks",
+        budget: Budget::Frames(300),
+        preset: Some((CHOSEN_PLATFORM_ADDR, CHIP8_PLATFORM)),
     },
 ];
 
@@ -37,49 +72,68 @@ fn golden_path(rom: &TestRom) -> PathBuf {
     rom_dir().join("golden").join(format!("{}.txt", rom.name))
 }
 
-fn screen_after(rom: &TestRom, cycles: usize) -> String {
-    let path = rom_dir().join("timendus").join(format!("{}.ch8", rom.name));
-    let quirks = Quirks {
-        display_wait: DisplayWaitQuirk::DrawImmediately,
-        ..Quirks::default()
+fn load(rom: &TestRom) -> Rom {
+    let path = rom_dir().join(rom.dir).join(format!("{}.ch8", rom.name));
+    let loaded = Rom::from_file(&path).unwrap();
+    match rom.preset {
+        Some((addr, byte)) => loaded.with_byte(addr, byte).unwrap(),
+        None => loaded,
+    }
+}
+
+fn screen_after(rom: &TestRom, budget: Budget) -> String {
+    let fail = |err| panic!("{}: {err}", rom.name);
+    let cpu = match budget {
+        Budget::Cycles(cycles) => {
+            let quirks = Quirks {
+                display_wait: DisplayWaitQuirk::DrawImmediately,
+                ..Quirks::default()
+            };
+            let mut cpu = Cpu::with_quirks(&load(rom), quirks);
+            cpu.run_for(cycles).unwrap_or_else(fail);
+            cpu
+        }
+        Budget::Frames(frames) => {
+            let mut cpu = Cpu::new(&load(rom));
+            for _ in 0..frames {
+                cpu.run_for(INSTRUCTIONS_PER_FRAME).unwrap_or_else(fail);
+                cpu.tick_timers();
+            }
+            cpu
+        }
     };
-    let mut cpu = Cpu::with_quirks(&Rom::from_file(&path).unwrap(), quirks);
-    cpu.run_for(cycles)
-        .unwrap_or_else(|err| panic!("{}: {err}", rom.name));
     cpu.framebuffer().to_string()
 }
 
 #[test]
-fn roms_draw_their_golden_image_within_their_cycle_budget() {
+fn roms_draw_their_golden_image_within_their_budget() {
     for rom in &TEST_ROMS {
-        let got = screen_after(rom, rom.cycles);
+        let got = screen_after(rom, rom.budget);
         let want = fs::read_to_string(golden_path(rom)).unwrap();
         assert!(got == want, "{} drew:\n{got}\nexpected:\n{want}", rom.name);
     }
 }
 
 #[test]
-fn roms_need_their_whole_cycle_budget() {
+fn roms_need_their_whole_budget() {
     for rom in &TEST_ROMS {
         assert_ne!(
-            screen_after(rom, rom.cycles - 1),
-            screen_after(rom, rom.cycles),
-            "{} finishes its image before cycle {}",
+            screen_after(rom, rom.budget.scaled(|n| n - 1)),
+            screen_after(rom, rom.budget),
+            "{} finishes its image early",
             rom.name,
-            rom.cycles
         );
     }
 }
 
 #[test]
-fn roms_keep_their_image_after_their_cycle_budget() {
+fn roms_keep_their_image_after_their_budget() {
     for rom in &TEST_ROMS {
         assert_eq!(
-            screen_after(rom, rom.cycles),
-            screen_after(rom, rom.cycles * 10),
-            "{} still changes the screen after {} cycles",
+            screen_after(rom, rom.budget),
+            screen_after(rom, rom.budget.scaled(|n| n * 10)),
+            "{} still changes the screen after its budget",
             rom.name,
-            rom.cycles
         );
     }
 }
@@ -88,6 +142,6 @@ fn roms_keep_their_image_after_their_cycle_budget() {
 #[ignore = "rewrites tests/roms/golden; check the new images by eye"]
 fn regenerate_golden_images() {
     for rom in &TEST_ROMS {
-        fs::write(golden_path(rom), screen_after(rom, rom.cycles)).unwrap();
+        fs::write(golden_path(rom), screen_after(rom, rom.budget)).unwrap();
     }
 }

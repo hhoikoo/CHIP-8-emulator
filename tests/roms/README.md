@@ -55,6 +55,24 @@ A pass mark is `#.#`, `##.`, `#..`, and a fail mark is an X (`#.#`, `.#.`, `#.#`
 
 To check that a fail would show: with the `8XY5` result broken on purpose, its row shows `NO`. Breaking only the `8XY5` flag changes nothing, because this ROM doesn't check `VF` there.
 
+## chip8Archive game (`chip8archive/`)
+
+`superpong.ch8` ("Super Pong" by offstatic, Octojam 8) from [JohnEarnest/chip8Archive](https://github.com/JohnEarnest/chip8Archive), copied unchanged from `roms/` at commit [`761e3ff`](https://github.com/JohnEarnest/chip8Archive/tree/761e3ffc63f43e6a849e80714122feff2afca208). The archive puts everything in it under [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/).
+
+| ROM | SHA-256 |
+|---|---|
+| `superpong.ch8` | `98e64a4728f15e969148a503d4176fe803df72307d86f353f2bb472cc3287899` |
+
+It was written for Octo: the archive lists a tick rate of 30 instructions per frame, and the display wait off. Play it with:
+
+```sh
+cargo run --release -- tests/roms/chip8archive/superpong.ch8 --speed 30 --draw-immediately
+```
+
+Key 6 (`E`) serves. Keys 5/8 (`W`/`S`) move the side paddles, and 7/9 (`A`/`D`) move the top and bottom paddles. Keep the ball inside the box.
+
+`tests/superpong.rs` is a smoke test with a fixed seed and scripted keys: the title waits for key 6, a game moves the ball, it ends on a stable game-over screen, and key 6 starts a new one.
+
 ## Other real ROMs (not used yet)
 
 Before adding one, pin the raw URL to a commit and record a checksum.
@@ -64,7 +82,7 @@ This repo is MIT, so only ROMs with a compatible license can be committed:
 | ROM | Source | License | Can commit? | Needs | How to check it |
 |---|---|---|---|---|---|
 | `test_opcode.ch8` (corax89) | [corax89/chip8-test-rom](https://github.com/corax89/chip8-test-rom) | MIT | **added** | skips, `8XY_`, `ANNN`, `FX33`, `FX55`, `DXYN` | golden framebuffer |
-| chip8Archive games, e.g. `br8kout` | [JohnEarnest/chip8Archive](https://github.com/JohnEarnest/chip8Archive) | CC0 (stated in the README) | yes | `CXNN`, keypad, timers | smoke test only: needs a seeded RNG and scripted keys |
+| other chip8Archive games, e.g. `br8kout` | [JohnEarnest/chip8Archive](https://github.com/JohnEarnest/chip8Archive) | CC0 (stated in the README) | yes (`superpong` **added**) | `CXNN`, keypad, timers | smoke test only: needs a seeded RNG and scripted keys |
 | `1-chip8-logo.ch8` (Timendus) | [Timendus/chip8-test-suite](https://github.com/Timendus/chip8-test-suite) | GPL-3.0 | **added** | `00E0`, `6XNN`, `ANNN`, `DXYN`, `1NNN` | framebuffer after 39 cycles |
 | `2-ibm-logo.ch8` (Timendus) | same | GPL-3.0; the original IBM logo bytes have no known license | **added** | adds `7XNN` and unaligned `DXYN` | framebuffer after 20 cycles |
 | `3-corax+.ch8` (Timendus) | same | GPL-3.0 | **added** | skips, calls, `8XY_`, `FX1E`, `FX33`, `FX55`, `FX65` | golden framebuffer of the pass/fail marks |

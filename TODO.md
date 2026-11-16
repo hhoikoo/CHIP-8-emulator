@@ -164,7 +164,9 @@ Work on this alongside the opcode groups: each item says which group it needs, s
   - [x] Map the keyboard to the 16-key keypad (`1234`/`QWER`/`ASDF`/`ZXCV`)
     - `KEYMAP` in `src/main.rs`; each window update presses the keys that are down and releases the rest
     - Needs: Group 7
-  - [ ] Play a real Pong ROM
+  - [x] Play a real Pong ROM
+    - Super Pong (CC0, chip8Archive) in `tests/roms/chip8archive/`, with a smoke test in `tests/superpong.rs`; it needs `--speed 30 --draw-immediately` (see `tests/roms/README.md`)
+    - The classic kripod `PONG` (unclear license) is for local play only and is never committed
     - Needs: every opcode group (Pong uses `CXNN`, timers and keys)
 
 ## Assembler

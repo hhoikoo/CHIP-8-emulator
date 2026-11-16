@@ -38,6 +38,9 @@ pub enum Instruction {
     LoadRegisters { x: Register },
     LoadFontCharacter { x: Register },
     Draw { x: Register, y: Register, n: Nibble },
+    ReadDelayTimer { x: Register },
+    SetDelayTimer { x: Register },
+    SetSoundTimer { x: Register },
 }
 
 const CLEAR_SCREEN: [Nibble; 4] = Opcode::new(0x00E0).nibbles();
@@ -70,6 +73,9 @@ const STORE_BCD: u8 = 0x33;
 const STORE_REGISTERS: u8 = 0x55;
 const LOAD_REGISTERS: u8 = 0x65;
 const LOAD_FONT_CHARACTER: u8 = 0x29;
+const READ_DELAY_TIMER: u8 = 0x07;
+const SET_DELAY_TIMER: u8 = 0x15;
+const SET_SOUND_TIMER: u8 = 0x18;
 
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
@@ -111,6 +117,9 @@ impl TryFrom<Opcode> for Instruction {
                 STORE_REGISTERS => Ok(Self::StoreRegisters { x }),
                 LOAD_REGISTERS => Ok(Self::LoadRegisters { x }),
                 LOAD_FONT_CHARACTER => Ok(Self::LoadFontCharacter { x }),
+                READ_DELAY_TIMER => Ok(Self::ReadDelayTimer { x }),
+                SET_DELAY_TIMER => Ok(Self::SetDelayTimer { x }),
+                SET_SOUND_TIMER => Ok(Self::SetSoundTimer { x }),
                 _ => Err(UnknownOpcodeError { opcode }),
             },
             _ => Err(UnknownOpcodeError { opcode }),
@@ -160,6 +169,9 @@ impl Instruction {
             Self::LoadRegisters { x } => xnn(MISC, x, LOAD_REGISTERS),
             Self::LoadFontCharacter { x } => xnn(MISC, x, LOAD_FONT_CHARACTER),
             Self::Draw { x, y, n } => xyn(DRAW, x, y, n),
+            Self::ReadDelayTimer { x } => xnn(MISC, x, READ_DELAY_TIMER),
+            Self::SetDelayTimer { x } => xnn(MISC, x, SET_DELAY_TIMER),
+            Self::SetSoundTimer { x } => xnn(MISC, x, SET_SOUND_TIMER),
         }
     }
 }

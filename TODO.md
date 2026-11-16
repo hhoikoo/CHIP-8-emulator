@@ -100,11 +100,12 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Show the framebuffer in a window (see "Display" below)
   - [ ] Group 5: timers
     - Needs: nothing
-    - [ ] Add an 8-bit delay timer and an 8-bit sound timer to `Cpu`
-    - [ ] Add a tick API (e.g. `Cpu::tick_timers()`) for a 60 Hz loop to call
-    - [ ] `FX07` `VX` = delay timer
-    - [ ] `FX15` delay timer = `VX`
-    - [ ] `FX18` sound timer = `VX`
+    - [x] Add an 8-bit delay timer and an 8-bit sound timer to `Cpu`
+    - [x] Add a tick API (e.g. `Cpu::tick_timers()`) for a 60 Hz loop to call
+      - `Cpu::tick_timers()` counts both down to 0; `Cpu::sound_active()` says whether to beep
+    - [x] `FX07` `VX` = delay timer
+    - [x] `FX15` delay timer = `VX`
+    - [x] `FX18` sound timer = `VX`
     - [ ] Add the display-wait quirk: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`; with `WaitForFrame`, `DXYN` waits for the next tick
   - [ ] Group 6: random numbers
     - Needs: nothing

@@ -1323,3 +1323,100 @@ fn clear_screen_turns_everything_off_and_keeps_vf() {
 fn the_screen_is_64_by_32() {
     assert_eq!((WIDTH, HEIGHT), (64, 32));
 }
+
+fn timers_after(program: &[Instruction], ticks: usize) -> Cpu {
+    let mut c = cpu(&[(START, &looping(START, program))]);
+    run_cycles(&mut c).unwrap();
+    for _ in 0..ticks {
+        c.tick_timers();
+    }
+    c
+}
+
+#[test]
+fn new_cpu_has_stopped_timers() {
+    let c = cpu(&[(START, &looping(START, &[]))]);
+    assert_eq!((c.delay_timer, c.sound_timer), (0, 0));
+    assert!(!c.sound_active());
+}
+
+#[test]
+fn set_delay_timer_copies_vx() {
+    let c = timers_after(&[load(V3, 42), SetDelayTimer { x: V3 }], 0);
+    assert_eq!((c.delay_timer, c.sound_timer), (42, 0));
+}
+
+#[test]
+fn set_sound_timer_copies_vx() {
+    let c = timers_after(&[load(V3, 42), SetSoundTimer { x: V3 }], 0);
+    assert_eq!((c.delay_timer, c.sound_timer), (0, 42));
+    assert!(c.sound_active());
+}
+
+#[test]
+fn read_delay_timer_copies_the_timer_into_vx() {
+    let c = timers_after(
+        &[
+            load(V0, 7),
+            SetDelayTimer { x: V0 },
+            ReadDelayTimer { x: VA },
+        ],
+        0,
+    );
+    assert_eq!(c.get_register_value(VA), 7);
+}
+
+#[test]
+fn running_alone_does_not_count_the_timers_down() {
+    let c = timers_after(&[load(V0, 7), SetDelayTimer { x: V0 }], 0);
+    assert_eq!(c.delay_timer, 7);
+}
+
+#[test]
+fn each_tick_counts_both_timers_down_by_one() {
+    let c = timers_after(
+        &[
+            load(V0, 7),
+            SetDelayTimer { x: V0 },
+            load(V1, 3),
+            SetSoundTimer { x: V1 },
+        ],
+        2,
+    );
+    assert_eq!((c.delay_timer, c.sound_timer), (5, 1));
+    assert!(c.sound_active());
+}
+
+#[test]
+fn timers_stop_at_zero() {
+    let c = timers_after(
+        &[
+            load(V0, 2),
+            SetDelayTimer { x: V0 },
+            SetSoundTimer { x: V0 },
+        ],
+        5,
+    );
+    assert_eq!((c.delay_timer, c.sound_timer), (0, 0));
+    assert!(!c.sound_active());
+}
+
+#[test]
+fn a_program_sees_the_delay_timer_count_down_between_steps() {
+    let mut c = cpu(&[(
+        START,
+        &looping(
+            START,
+            &[
+                load(V0, 10),
+                SetDelayTimer { x: V0 },
+                ReadDelayTimer { x: V1 },
+            ],
+        ),
+    )]);
+    c.run_for(2).unwrap();
+    c.tick_timers();
+    c.tick_timers();
+    c.step().unwrap();
+    assert_eq!(c.get_register_value(V1), 8);
+}

@@ -39,6 +39,9 @@ impl Cpu {
             Instruction::LoadRegisters { x } => self.load_registers(x)?,
             Instruction::LoadFontCharacter { x } => self.load_font_character(x)?,
             Instruction::Draw { x, y, n } => self.draw(x, y, n)?,
+            Instruction::ReadDelayTimer { x } => self.registers[x] = self.delay_timer,
+            Instruction::SetDelayTimer { x } => self.delay_timer = self.registers[x],
+            Instruction::SetSoundTimer { x } => self.sound_timer = self.registers[x],
         }
         Ok(())
     }

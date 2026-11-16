@@ -31,6 +31,8 @@ pub struct Cpu {
     quirks: Quirks,
     i: u16,
     framebuffer: Framebuffer,
+    delay_timer: u8,
+    sound_timer: u8,
 }
 
 impl Cpu {
@@ -54,6 +56,8 @@ impl Cpu {
             quirks,
             i: 0,
             framebuffer: Framebuffer::default(),
+            delay_timer: 0,
+            sound_timer: 0,
         }
     }
 
@@ -63,6 +67,15 @@ impl Cpu {
 
     pub fn framebuffer(&self) -> &Framebuffer {
         &self.framebuffer
+    }
+
+    pub fn sound_active(&self) -> bool {
+        self.sound_timer > 0
+    }
+
+    pub fn tick_timers(&mut self) {
+        self.delay_timer = self.delay_timer.saturating_sub(1);
+        self.sound_timer = self.sound_timer.saturating_sub(1);
     }
 
     pub fn run(&mut self, mut should_stop: impl FnMut() -> bool) -> Result<(), CpuError> {

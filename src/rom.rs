@@ -47,6 +47,12 @@ impl Rom {
         })
     }
 
+    pub fn with_byte(self, addr: usize, byte: u8) -> Result<Self, LoadError> {
+        let mut segments = self.segments;
+        segments.push(Segment::from_bytes(addr, vec![byte])?);
+        Rom::from_segments(segments)
+    }
+
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, RomFileError> {
         let path = path.as_ref();
         let bytes = fs::read(path).map_err(|source| RomFileError::Read {

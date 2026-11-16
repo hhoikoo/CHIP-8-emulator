@@ -279,3 +279,42 @@ fn from_file_too_big_is_a_load_error() {
         )
     );
 }
+
+#[test]
+fn with_byte_sets_one_byte_and_leaves_its_neighbours_alone() {
+    let rom = Rom::from_bytes(&[0xAB, 0xCD])
+        .unwrap()
+        .with_byte(0x1FF, 0x01)
+        .unwrap();
+    let memory = loaded_bytes(&rom);
+    assert_eq!(memory[0x1FE..0x202], [0x00, 0x01, 0xAB, 0xCD]);
+}
+
+#[test]
+fn with_byte_works_on_an_empty_rom_and_at_the_last_address() {
+    let rom = Rom::from_bytes(&[])
+        .unwrap()
+        .with_byte(MEMORY_SIZE - 1, 0x7F)
+        .unwrap();
+    assert_eq!(loaded_bytes(&rom)[MEMORY_SIZE - 1], 0x7F);
+}
+
+#[test]
+fn with_byte_inside_a_segment_is_an_overlap() {
+    let rom = Rom::from_bytes(&[0xAB, 0xCD])
+        .unwrap()
+        .with_byte(0x201, 0x01);
+    assert!(is_overlap(rom, 0x200, 0x201));
+}
+
+#[test]
+fn with_byte_past_the_end_of_memory_is_out_of_bounds() {
+    let rom = Rom::from_bytes(&[]).unwrap().with_byte(MEMORY_SIZE, 0x01);
+    assert!(matches!(
+        rom,
+        Err(LoadError::OutOfBounds {
+            addr: MEMORY_SIZE,
+            byte_len: 1
+        })
+    ));
+}

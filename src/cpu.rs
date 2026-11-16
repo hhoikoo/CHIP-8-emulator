@@ -5,10 +5,11 @@ mod quirks;
 
 pub use error::CpuError;
 pub use program_counter::ProgramCounter;
-pub use quirks::{JumpQuirk, LogicQuirk, MemoryQuirk, Quirks, ShiftQuirk};
+pub use quirks::{ClipQuirk, JumpQuirk, LogicQuirk, MemoryQuirk, Quirks, ShiftQuirk};
 
 use crate::{
     font::{FONT_START, GLYPHS},
+    framebuffer::Framebuffer,
     isa::{
         instruction::Instruction,
         opcode::Opcode,
@@ -29,6 +30,7 @@ pub struct Cpu {
     stack_ptr: usize,
     quirks: Quirks,
     i: u16,
+    framebuffer: Framebuffer,
 }
 
 impl Cpu {
@@ -51,11 +53,16 @@ impl Cpu {
             stack_ptr: 0,
             quirks,
             i: 0,
+            framebuffer: Framebuffer::default(),
         }
     }
 
     pub fn get_register_value(&self, register: Register) -> u8 {
         self.registers[register]
+    }
+
+    pub fn framebuffer(&self) -> &Framebuffer {
+        &self.framebuffer
     }
 
     pub fn run(&mut self, mut should_stop: impl FnMut() -> bool) -> Result<(), CpuError> {

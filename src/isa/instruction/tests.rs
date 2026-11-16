@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 8 * 0x1000 + 11 * 0x100 + 5 * 0x10;
+const DECODABLE_OPCODE_COUNT: usize = 2 + 9 * 0x1000 + 11 * 0x100 + 5 * 0x10;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -13,7 +13,16 @@ fn addr(value: u16) -> Addr {
 
 #[test]
 fn decodes_each_instruction() {
+    assert_eq!(decode(0x00E0), Ok(Instruction::ClearScreen));
     assert_eq!(decode(0x00EE), Ok(Instruction::Return));
+    assert_eq!(
+        decode(0xDAB5),
+        Ok(Instruction::Draw {
+            x: VA,
+            y: VB,
+            n: Nibble::expect_new(5)
+        })
+    );
     assert_eq!(decode(0x1ABC), Ok(Instruction::Jump { addr: addr(0xABC) }));
     assert_eq!(
         decode(0xBABC),
@@ -112,7 +121,7 @@ fn operand_extremes() {
 #[test]
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
-        0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
+        0x0000, 0x00E1, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
         0xF000, 0xF01F, 0xF02E, 0xF0E1, 0xF034, 0xF056, 0xF066, 0xF053, 0xF028, 0xF030,
     ] {
         assert_eq!(
@@ -165,6 +174,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
         let addr = Addr::new(opcode & 0x0FFF).unwrap();
 
         let expected = match opcode {
+            0x00E0 => Some(Instruction::ClearScreen),
             0x00EE => Some(Instruction::Return),
             0x1000..=0x1FFF => Some(Instruction::Jump { addr }),
             0x2000..=0x2FFF => Some(Instruction::Call { addr }),
@@ -185,6 +195,11 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0x9000..=0x9FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfNotEqual { x, y }),
             0xA000..=0xAFFF => Some(Instruction::LoadIndex { addr }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
+            0xD000..=0xDFFF => Some(Instruction::Draw {
+                x,
+                y,
+                n: Nibble::new((opcode & 0xF) as u8).unwrap(),
+            }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x1E => Some(Instruction::AddToIndex { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x29 => Some(Instruction::LoadFontCharacter { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x33 => Some(Instruction::StoreBcd { x }),
@@ -219,7 +234,16 @@ fn unknown_opcode_error_message() {
 #[test]
 fn encodes_each_instruction() {
     let cases = [
+        (Instruction::ClearScreen, 0x00E0),
         (Instruction::Return, 0x00EE),
+        (
+            Instruction::Draw {
+                x: VA,
+                y: VB,
+                n: Nibble::expect_new(5),
+            },
+            0xDAB5,
+        ),
         (Instruction::Jump { addr: addr(0xABC) }, 0x1ABC),
         (Instruction::JumpWithOffset { addr: addr(0xABC) }, 0xBABC),
         (Instruction::Call { addr: addr(0xABC) }, 0x2ABC),

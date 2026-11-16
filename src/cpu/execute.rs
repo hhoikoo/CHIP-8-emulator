@@ -1,12 +1,16 @@
-use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter, ShiftQuirk};
+use super::{
+    ClipQuirk, Cpu, CpuError, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter, ShiftQuirk,
+};
 use crate::{
     font,
+    framebuffer::{HEIGHT, WIDTH},
     isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register},
 };
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {
         match instruction {
+            Instruction::ClearScreen => self.framebuffer.clear(),
             Instruction::Return => self.ret()?,
             Instruction::Jump { addr } => self.jump(addr),
             Instruction::JumpWithOffset { addr } => self.jump_with_offset(addr),
@@ -34,6 +38,7 @@ impl Cpu {
             Instruction::StoreRegisters { x } => self.store_registers(x)?,
             Instruction::LoadRegisters { x } => self.load_registers(x)?,
             Instruction::LoadFontCharacter { x } => self.load_font_character(x)?,
+            Instruction::Draw { x, y, n } => self.draw(x, y, n)?,
         }
         Ok(())
     }
@@ -224,6 +229,29 @@ impl Cpu {
         let digit =
             Nibble::new(value).map_err(|_| CpuError::FontDigitOutOfRange { pc: self.pc, value })?;
         self.i = font::glyph_addr(digit);
+        Ok(())
+    }
+
+    fn draw(&mut self, x: Register, y: Register, n: Nibble) -> Result<(), CpuError> {
+        let len = usize::from(n);
+        let sprite = self
+            .memory
+            .read(usize::from(self.i), len)
+            .ok_or_else(|| self.index_out_of_bounds(len))?;
+        let left = usize::from(self.registers[x]) % WIDTH;
+        let top = usize::from(self.registers[y]) % HEIGHT;
+
+        let mut turned_off = false;
+        for (row, &bits) in sprite.iter().enumerate() {
+            for column in (0..8).filter(|column| bits & (0x80 >> column) != 0) {
+                let (px, py) = (left + column, top + row);
+                if self.quirks.clip == ClipQuirk::Clip && (px >= WIDTH || py >= HEIGHT) {
+                    continue;
+                }
+                turned_off |= self.framebuffer.flip(px, py);
+            }
+        }
+        self.registers[Register::VF] = u8::from(turned_off);
         Ok(())
     }
 

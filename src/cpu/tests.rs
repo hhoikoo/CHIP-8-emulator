@@ -1,7 +1,8 @@
 use crate::{
     examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
     font::{FONT_START, GLYPHS},
-    isa::addr::Addr,
+    framebuffer::{Framebuffer, HEIGHT, WIDTH},
+    isa::{addr::Addr, nibble::Nibble},
     memory::PROGRAM_START,
 };
 
@@ -1138,4 +1139,187 @@ fn load_font_character_past_0xf_is_font_digit_out_of_range() {
             "{value:#x}"
         );
     }
+}
+
+fn draw(x: Register, y: Register, n: u8) -> Instruction {
+    Draw {
+        x,
+        y,
+        n: Nibble::expect_new(n),
+    }
+}
+
+fn wrap() -> Quirks {
+    Quirks {
+        clip: ClipQuirk::Wrap,
+        ..Quirks::default()
+    }
+}
+
+fn lit(c: &Cpu) -> Vec<(usize, usize)> {
+    c.framebuffer()
+        .rows()
+        .enumerate()
+        .flat_map(|(y, row)| {
+            row.iter()
+                .enumerate()
+                .filter(|&(_, &on)| on)
+                .map(move |(x, _)| (x, y))
+        })
+        .collect()
+}
+
+fn drawn_at(x: u8, y: u8, sprite: &[u8], quirks: Quirks) -> Cpu {
+    let n = u8::try_from(sprite.len()).unwrap();
+    cpu_after(
+        &[load(V0, x), load(V1, y), load_index(0x300), draw(V0, V1, n)],
+        sprite,
+        quirks,
+    )
+}
+
+#[test]
+fn new_cpu_has_a_dark_screen() {
+    let c = cpu(&[(START, &looping(START, &[]))]);
+    assert_eq!(c.framebuffer(), &Framebuffer::default());
+}
+
+#[test]
+fn new_cpu_clips_by_default() {
+    assert_eq!(Quirks::default().clip, ClipQuirk::Clip);
+}
+
+#[test]
+fn draw_shows_a_font_glyph() {
+    let c = cpu_after(
+        &[
+            load(V0, 0x0),
+            LoadFontCharacter { x: V0 },
+            load(V1, 2),
+            load(V2, 1),
+            draw(V1, V2, 5),
+        ],
+        &[],
+        Quirks::default(),
+    );
+    let screen = c.framebuffer().to_string();
+    let glyph: Vec<&str> = screen.lines().skip(1).take(5).map(|l| &l[..7]).collect();
+    assert_eq!(
+        glyph,
+        ["..####.", "..#..#.", "..#..#.", "..#..#.", "..####."]
+    );
+    assert_eq!(c.registers[VF], 0);
+}
+
+#[test]
+fn drawing_twice_erases_and_sets_vf() {
+    let c = cpu_after(
+        &[load_index(0x300), draw(V0, V0, 2), draw(V0, V0, 2)],
+        &[0b1010_0000, 0b0101_0000],
+        Quirks::default(),
+    );
+    assert_eq!(lit(&c), []);
+    assert_eq!(c.registers[VF], 1);
+}
+
+#[test]
+fn vf_is_set_only_when_a_lit_pixel_turns_off() {
+    let c = cpu_after(
+        &[
+            load_index(0x300),
+            draw(V0, V0, 1),
+            load_index(0x301),
+            draw(V0, V0, 1),
+        ],
+        &[0b1000_0000, 0b0100_0000],
+        Quirks::default(),
+    );
+    assert_eq!(lit(&c), [(0, 0), (1, 0)]);
+    assert_eq!(c.registers[VF], 0);
+
+    let c = cpu_after(
+        &[
+            load_index(0x300),
+            draw(V0, V0, 1),
+            load_index(0x301),
+            draw(V0, V0, 1),
+        ],
+        &[0b1100_0000, 0b0110_0000],
+        Quirks::default(),
+    );
+    assert_eq!(lit(&c), [(0, 0), (2, 0)]);
+    assert_eq!(c.registers[VF], 1);
+}
+
+#[test]
+fn draw_wraps_the_start_position() {
+    let c = drawn_at(64 + 3, 32 + 2, &[0b1000_0000], Quirks::default());
+    assert_eq!(lit(&c), [(3, 2)]);
+    let c = drawn_at(0xFF, 0xFF, &[0b1000_0000], Quirks::default());
+    assert_eq!(lit(&c), [(63, 31)]);
+}
+
+#[test]
+fn draw_clips_at_the_right_and_bottom_edges_by_default() {
+    let c = drawn_at(62, 30, &[0xF0, 0xF0, 0xF0], Quirks::default());
+    assert_eq!(lit(&c), [(62, 30), (63, 30), (62, 31), (63, 31)]);
+}
+
+#[test]
+fn draw_wraps_at_the_edges_with_the_wrap_quirk() {
+    let c = drawn_at(62, 31, &[0xF0, 0x80], wrap());
+    assert_eq!(lit(&c), [(62, 0), (0, 31), (1, 31), (62, 31), (63, 31)]);
+}
+
+#[test]
+fn draw_with_zero_rows_draws_nothing_and_clears_vf() {
+    let c = cpu_after(
+        &[load(VF, 1), load_index(0x300), draw(V0, V0, 0)],
+        &[0xFF],
+        Quirks::default(),
+    );
+    assert_eq!(lit(&c), []);
+    assert_eq!(c.registers[VF], 0);
+}
+
+#[test]
+fn draw_reads_vf_as_a_coordinate_before_setting_it() {
+    let c = cpu_after(
+        &[load(VF, 8), load(V0, 1), load_index(0x300), draw(VF, V0, 1)],
+        &[0x80],
+        Quirks::default(),
+    );
+    assert_eq!(lit(&c), [(8, 1)]);
+    assert_eq!(c.registers[VF], 0);
+}
+
+#[test]
+fn draw_past_the_end_of_memory_is_index_out_of_bounds() {
+    let err = run_err(&[(START, &[load_index(0xFFC), draw(V0, V0, 5)])]);
+    assert!(matches!(
+        err,
+        CpuError::IndexOutOfBounds { pc, i: 0xFFC, len: 5 } if pc.get() == 0x204
+    ));
+}
+
+#[test]
+fn clear_screen_turns_everything_off_and_keeps_vf() {
+    let c = cpu_after(
+        &[
+            load_index(0x300),
+            draw(V0, V0, 1),
+            load_index(0x301),
+            draw(V0, V0, 1),
+            ClearScreen,
+        ],
+        &[0xFF, 0x80],
+        Quirks::default(),
+    );
+    assert_eq!(c.framebuffer(), &Framebuffer::default());
+    assert_eq!(c.registers[VF], 1);
+}
+
+#[test]
+fn the_screen_is_64_by_32() {
+    assert_eq!((WIDTH, HEIGHT), (64, 32));
 }

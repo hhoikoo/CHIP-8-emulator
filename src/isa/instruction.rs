@@ -11,6 +11,7 @@ use crate::isa::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Instruction {
+    ClearScreen,
     Return,
     Jump { addr: Addr },
     JumpWithOffset { addr: Addr },
@@ -36,8 +37,10 @@ pub enum Instruction {
     StoreRegisters { x: Register },
     LoadRegisters { x: Register },
     LoadFontCharacter { x: Register },
+    Draw { x: Register, y: Register, n: Nibble },
 }
 
+const CLEAR_SCREEN: [Nibble; 4] = Opcode::new(0x00E0).nibbles();
 const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
 const JUMP: Nibble = Nibble::expect_new(0x1);
 const CALL: Nibble = Nibble::expect_new(0x2);
@@ -59,6 +62,7 @@ const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
 const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
 const SKIP_IF_EQUAL: Nibble = Nibble::expect_new(0x5);
 const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
+const DRAW: Nibble = Nibble::expect_new(0xD);
 const MISC: Nibble = Nibble::expect_new(0xF);
 const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
 const ADD_TO_INDEX: u8 = 0x1E;
@@ -73,14 +77,15 @@ impl TryFrom<Opcode> for Instruction {
     fn try_from(opcode: Opcode) -> Result<Self, UnknownOpcodeError> {
         let Nnn { addr, .. } = opcode.into();
         let Xnn { x, nn, .. } = opcode.into();
-        let Xyn { y, .. } = opcode.into();
+        let Xyn { y, n, .. } = opcode.into();
 
         match opcode.nibbles() {
+            CLEAR_SCREEN => Ok(Self::ClearScreen),
             RETURN => Ok(Self::Return),
             [JUMP, ..] => Ok(Self::Jump { addr }),
             [CALL, ..] => Ok(Self::Call { addr }),
             [LOAD_IMMEDIATE, ..] => Ok(Self::LoadImmediate { x, nn }),
-            [REGISTER_OP, .., n] => match n {
+            [REGISTER_OP, ..] => match n {
                 LOAD_REGISTER => Ok(Self::LoadRegister { x, y }),
                 ADD_WITH_CARRY => Ok(Self::AddWithCarry { x, y }),
                 OR => Ok(Self::Or { x, y }),
@@ -99,6 +104,7 @@ impl TryFrom<Opcode> for Instruction {
             [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
             [SKIP_IF_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfEqual { x, y }),
             [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
+            [DRAW, ..] => Ok(Self::Draw { x, y, n }),
             [MISC, ..] => match nn {
                 ADD_TO_INDEX => Ok(Self::AddToIndex { x }),
                 STORE_BCD => Ok(Self::StoreBcd { x }),
@@ -127,6 +133,7 @@ fn xyn(prefix: Nibble, x: Register, y: Register, n: Nibble) -> Opcode {
 impl Instruction {
     pub fn encode(self) -> Opcode {
         match self {
+            Self::ClearScreen => Opcode::from(CLEAR_SCREEN),
             Self::Return => Opcode::from(RETURN),
             Self::Jump { addr } => nnn(JUMP, addr),
             Self::Call { addr } => nnn(CALL, addr),
@@ -152,6 +159,7 @@ impl Instruction {
             Self::StoreRegisters { x } => xnn(MISC, x, STORE_REGISTERS),
             Self::LoadRegisters { x } => xnn(MISC, x, LOAD_REGISTERS),
             Self::LoadFontCharacter { x } => xnn(MISC, x, LOAD_FONT_CHARACTER),
+            Self::Draw { x, y, n } => xyn(DRAW, x, y, n),
         }
     }
 }

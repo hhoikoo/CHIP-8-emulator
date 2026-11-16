@@ -82,11 +82,13 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - `VX > 0xF` is a `FontDigitOutOfRange` error instead of using the low nibble
   - [ ] Group 4: display
     - Needs: Group 2 (`DXYN` reads the sprite at `I`)
-    - [ ] Add a 64×32 one-bit framebuffer to `Cpu`, with a read-only getter
-    - [ ] `00E0` clear the screen
-    - [ ] `DXYN` XOR-draw an `N`-byte sprite from `I` at `(VX, VY)`, `VF` = collision
-    - [ ] Decide the clipping quirk: sprites crossing the edge are clipped (original) or wrap around
-    - [ ] Decide the display-wait quirk: `DXYN` waits for the next 60 Hz frame (original) or draws at once
+    - [x] Add a 64×32 one-bit framebuffer to `Cpu`, with a read-only getter
+    - [x] `00E0` clear the screen
+    - [x] `DXYN` XOR-draw an `N`-byte sprite from `I` at `(VX, VY)`, `VF` = collision
+    - [x] Decide the clipping quirk: sprites crossing the edge are clipped (original) or wrap around
+      - Configurable with `Quirks { clip: ClipQuirk }`, `Clip` by default; the start position always wraps
+    - [x] Decide the display-wait quirk: `DXYN` waits for the next 60 Hz frame (original) or draws at once
+      - Deferred to Group 5, which brings the 60 Hz tick: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`. Until then `DXYN` draws at once
     - [ ] Decide how to bring in the GPL-3.0 Timendus test ROMs: commit them, download them in the test, or keep them untracked (`tests/roms/README.md`)
     - [ ] Decide the golden-image format for framebuffer tests (e.g. 32 text lines of `#` and `.`)
     - [ ] Real-ROM test: `1-chip8-logo.ch8`, compare the framebuffer after 39 cycles with a golden image
@@ -101,6 +103,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [ ] `FX07` `VX` = delay timer
     - [ ] `FX15` delay timer = `VX`
     - [ ] `FX18` sound timer = `VX`
+    - [ ] Add the display-wait quirk: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`; with `WaitForFrame`, `DXYN` waits for the next tick
   - [ ] Group 6: random numbers
     - Needs: nothing
     - [ ] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)

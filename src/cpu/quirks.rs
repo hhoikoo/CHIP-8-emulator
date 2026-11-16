@@ -4,6 +4,7 @@ pub struct Quirks {
     pub logic: LogicQuirk,
     pub shift: ShiftQuirk,
     pub memory: MemoryQuirk,
+    pub clip: ClipQuirk,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -32,4 +33,11 @@ pub enum MemoryQuirk {
     #[default]
     AdvanceI,
     LeaveI,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ClipQuirk {
+    #[default]
+    Clip,
+    Wrap,
 }

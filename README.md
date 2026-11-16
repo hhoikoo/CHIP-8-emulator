@@ -10,6 +10,7 @@ Currently supported instructions:
 
 | Opcode | Meaning |
 | --- | --- |
+| `00E0` | clear the screen |
 | `00EE` | return |
 | `1NNN` | jump to `NNN` |
 | `2NNN` | call `NNN` |
@@ -30,6 +31,7 @@ Currently supported instructions:
 | `9XY0` | skip next if `VX != VY` |
 | `ANNN` | `I = NNN` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
+| `DXYN` | XOR-draw `N` sprite rows from `I` at `(VX, VY)`, `VF = 1` if a pixel turned off; clipped at the edges (quirk: wrap) |
 | `FX1E` | `I += VX` |
 | `FX29` | `I` = address of the font sprite for digit `VX` (`VX > 0xF` is an error) |
 | `FX33` | store `VX` as 3 decimal digits at `I`, `I+1`, `I+2` |

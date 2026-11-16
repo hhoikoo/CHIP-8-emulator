@@ -27,10 +27,11 @@ fn try_from_agrees_with_new_for_every_u8() {
 }
 
 #[test]
-fn converts_back_to_u8_and_u16() {
+fn converts_back_to_u8_u16_and_usize() {
     let nibble = Nibble::new(0xA).unwrap();
     assert_eq!(u8::from(nibble), 0xA);
     assert_eq!(u16::from(nibble), 0xA);
+    assert_eq!(usize::from(nibble), 0xA);
 }
 
 #[test]

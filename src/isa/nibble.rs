@@ -48,5 +48,11 @@ impl From<Nibble> for u16 {
     }
 }
 
+impl From<Nibble> for usize {
+    fn from(nibble: Nibble) -> usize {
+        usize::from(nibble.get())
+    }
+}
+
 #[cfg(test)]
 mod tests;

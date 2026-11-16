@@ -1,6 +1,9 @@
+mod cli;
+
 use std::{
     env,
     error::Error,
+    num::NonZeroUsize,
     path::Path,
     process::ExitCode,
     sync::{
@@ -11,7 +14,7 @@ use std::{
 };
 
 use chip8_emulator::{
-    cpu::Cpu,
+    cpu::{Cpu, Quirks},
     examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
     frame_clock::FrameClock,
     framebuffer::{Framebuffer, HEIGHT, WIDTH},
@@ -24,7 +27,6 @@ use minifb::{Key, Scale, Window, WindowOptions};
 
 const DEMO_CYCLE_BUDGET: usize = 100;
 const FRAME_PERIOD: Duration = Duration::from_nanos(1_000_000_000 / 60);
-const INSTRUCTIONS_PER_FRAME: usize = 12;
 const MAX_CATCH_UP_FRAMES: u32 = 5;
 const LIT: u32 = 0x00E8_E8E8;
 const DARK: u32 = 0x0018_1818;
@@ -55,9 +57,14 @@ const fn keypad_key(value: u8) -> Nibble {
 }
 
 fn main() -> ExitCode {
-    let result = match env::args_os().nth(1) {
-        Some(path) => run_rom_file(Path::new(&path)),
-        None => run_demo(),
+    let result = match cli::Options::parse(env::args_os().skip(1)) {
+        Ok(cli::Options {
+            rom: Some(path),
+            instructions_per_frame,
+            quirks,
+        }) => run_rom_file(&path, instructions_per_frame, quirks),
+        Ok(cli::Options { rom: None, .. }) => run_demo(),
+        Err(err) => Err(err.into()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -68,8 +75,12 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_rom_file(path: &Path) -> Result<(), Box<dyn Error>> {
-    let mut cpu = Cpu::new(&Rom::from_file(path)?).seeded(seed_from_clock());
+fn run_rom_file(
+    path: &Path,
+    instructions_per_frame: NonZeroUsize,
+    quirks: Quirks,
+) -> Result<(), Box<dyn Error>> {
+    let mut cpu = Cpu::with_quirks(&Rom::from_file(path)?, quirks).seeded(seed_from_clock());
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_from_handler = Arc::clone(&stop);
@@ -85,7 +96,7 @@ fn run_rom_file(path: &Path) -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    let outcome = run_in_window(&mut cpu, &mut window, &stop);
+    let outcome = run_in_window(&mut cpu, &mut window, instructions_per_frame, &stop);
     print_registers(&cpu)?;
     outcome
 }
@@ -93,6 +104,7 @@ fn run_rom_file(path: &Path) -> Result<(), Box<dyn Error>> {
 fn run_in_window(
     cpu: &mut Cpu,
     window: &mut Window,
+    instructions_per_frame: NonZeroUsize,
     stop: &AtomicBool,
 ) -> Result<(), Box<dyn Error>> {
     let mut clock = FrameClock::new(FRAME_PERIOD, MAX_CATCH_UP_FRAMES, Instant::now());
@@ -101,7 +113,7 @@ fn run_in_window(
     while window.is_open() && !window.is_key_down(Key::Escape) && !stop.load(Ordering::Relaxed) {
         update_keypad(cpu, window);
         for _ in 0..clock.frames_due(Instant::now()) {
-            cpu.run_for(INSTRUCTIONS_PER_FRAME)?;
+            cpu.run_for(instructions_per_frame.get())?;
             cpu.tick_timers();
         }
         paint(cpu.framebuffer(), &mut pixels);

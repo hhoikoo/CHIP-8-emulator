@@ -65,6 +65,11 @@ A S D F       7 8 9 E
 Z X C V       A 0 B F
 ```
 
+Two options suit ROMs written for modern interpreters such as Octo:
+
+- `--speed <n>` runs `n` instructions per frame instead of 12.
+- `--draw-immediately` turns off the original display wait, so a ROM can draw more than one sprite per frame.
+
 Close it with Escape, the close button or Ctrl-C. It prints the registers when it stops, plus the error if the ROM failed.
 
 `cargo run` with no ROM runs a small built-in demo without a window and prints `5 + (2 * 10) + (2 * 10) = 45`.

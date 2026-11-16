@@ -1,3 +1,4 @@
+mod beeper;
 mod cli;
 
 use std::{
@@ -23,6 +24,7 @@ use chip8_emulator::{
     rom::Rom,
 };
 
+use beeper::Beeper;
 use minifb::{Key, Scale, Window, WindowOptions};
 
 const DEMO_CYCLE_BUDGET: usize = 100;
@@ -109,12 +111,18 @@ fn run_in_window(
 ) -> Result<(), Box<dyn Error>> {
     let mut clock = FrameClock::new(FRAME_PERIOD, MAX_CATCH_UP_FRAMES, Instant::now());
     let mut pixels = vec![DARK; WIDTH * HEIGHT];
+    let beeper = Beeper::open()
+        .inspect_err(|err| eprintln!("No sound: {err}"))
+        .ok();
 
     while window.is_open() && !window.is_key_down(Key::Escape) && !stop.load(Ordering::Relaxed) {
         update_keypad(cpu, window);
         for _ in 0..clock.frames_due(Instant::now()) {
             cpu.run_for(instructions_per_frame.get())?;
             cpu.tick_timers();
+        }
+        if let Some(beeper) = &beeper {
+            beeper.set_active(cpu.sound_active());
         }
         paint(cpu.framebuffer(), &mut pixels);
         window.update_with_buffer(&pixels, WIDTH, HEIGHT)?;

@@ -1,5 +1,6 @@
 use super::{
-    ClipQuirk, Cpu, CpuError, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter, ShiftQuirk,
+    ClipQuirk, Cpu, CpuError, DisplayWaitQuirk, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter,
+    ShiftQuirk, State,
 };
 use crate::{
     font,
@@ -255,6 +256,9 @@ impl Cpu {
             }
         }
         self.registers[Register::VF] = u8::from(turned_off);
+        if self.quirks.display_wait == DisplayWaitQuirk::WaitForFrame {
+            self.state = State::WaitingForFrame;
+        }
         Ok(())
     }
 

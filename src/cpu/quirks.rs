@@ -5,6 +5,7 @@ pub struct Quirks {
     pub shift: ShiftQuirk,
     pub memory: MemoryQuirk,
     pub clip: ClipQuirk,
+    pub display_wait: DisplayWaitQuirk,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -40,4 +41,11 @@ pub enum ClipQuirk {
     #[default]
     Clip,
     Wrap,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DisplayWaitQuirk {
+    #[default]
+    WaitForFrame,
+    DrawImmediately,
 }

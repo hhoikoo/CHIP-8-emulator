@@ -5,7 +5,9 @@ mod quirks;
 
 pub use error::CpuError;
 pub use program_counter::ProgramCounter;
-pub use quirks::{ClipQuirk, JumpQuirk, LogicQuirk, MemoryQuirk, Quirks, ShiftQuirk};
+pub use quirks::{
+    ClipQuirk, DisplayWaitQuirk, JumpQuirk, LogicQuirk, MemoryQuirk, Quirks, ShiftQuirk,
+};
 
 use crate::{
     font::{FONT_START, GLYPHS},
@@ -21,6 +23,12 @@ use crate::{
 
 pub const STACK_SIZE: usize = 16;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum State {
+    Running,
+    WaitingForFrame,
+}
+
 #[derive(Debug)]
 pub struct Cpu {
     registers: Registers,
@@ -33,6 +41,7 @@ pub struct Cpu {
     framebuffer: Framebuffer,
     delay_timer: u8,
     sound_timer: u8,
+    state: State,
 }
 
 impl Cpu {
@@ -58,6 +67,7 @@ impl Cpu {
             framebuffer: Framebuffer::default(),
             delay_timer: 0,
             sound_timer: 0,
+            state: State::Running,
         }
     }
 
@@ -76,6 +86,9 @@ impl Cpu {
     pub fn tick_timers(&mut self) {
         self.delay_timer = self.delay_timer.saturating_sub(1);
         self.sound_timer = self.sound_timer.saturating_sub(1);
+        if self.state == State::WaitingForFrame {
+            self.state = State::Running;
+        }
     }
 
     pub fn run(&mut self, mut should_stop: impl FnMut() -> bool) -> Result<(), CpuError> {
@@ -93,6 +106,9 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> Result<(), CpuError> {
+        if self.state != State::Running {
+            return Ok(());
+        }
         let opcode = self.read_opcode()?;
         let instruction = Instruction::try_from(opcode).map_err(|err| CpuError::UnknownOpcode {
             opcode: err.opcode,

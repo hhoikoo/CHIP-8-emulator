@@ -1156,6 +1156,13 @@ fn wrap() -> Quirks {
     }
 }
 
+fn draw_immediately() -> Quirks {
+    Quirks {
+        display_wait: DisplayWaitQuirk::DrawImmediately,
+        ..Quirks::default()
+    }
+}
+
 fn lit(c: &Cpu) -> Vec<(usize, usize)> {
     c.framebuffer()
         .rows()
@@ -1216,7 +1223,7 @@ fn drawing_twice_erases_and_sets_vf() {
     let c = cpu_after(
         &[load_index(0x300), draw(V0, V0, 2), draw(V0, V0, 2)],
         &[0b1010_0000, 0b0101_0000],
-        Quirks::default(),
+        draw_immediately(),
     );
     assert_eq!(lit(&c), []);
     assert_eq!(c.registers[VF], 1);
@@ -1232,7 +1239,7 @@ fn vf_is_set_only_when_a_lit_pixel_turns_off() {
             draw(V0, V0, 1),
         ],
         &[0b1000_0000, 0b0100_0000],
-        Quirks::default(),
+        draw_immediately(),
     );
     assert_eq!(lit(&c), [(0, 0), (1, 0)]);
     assert_eq!(c.registers[VF], 0);
@@ -1245,7 +1252,7 @@ fn vf_is_set_only_when_a_lit_pixel_turns_off() {
             draw(V0, V0, 1),
         ],
         &[0b1100_0000, 0b0110_0000],
-        Quirks::default(),
+        draw_immediately(),
     );
     assert_eq!(lit(&c), [(0, 0), (2, 0)]);
     assert_eq!(c.registers[VF], 1);
@@ -1313,7 +1320,7 @@ fn clear_screen_turns_everything_off_and_keeps_vf() {
             ClearScreen,
         ],
         &[0xFF, 0x80],
-        Quirks::default(),
+        draw_immediately(),
     );
     assert_eq!(c.framebuffer(), &Framebuffer::default());
     assert_eq!(c.registers[VF], 1);
@@ -1419,4 +1426,61 @@ fn a_program_sees_the_delay_timer_count_down_between_steps() {
     c.tick_timers();
     c.step().unwrap();
     assert_eq!(c.get_register_value(V1), 8);
+}
+
+#[test]
+fn new_cpu_waits_for_a_frame_after_drawing_by_default() {
+    assert_eq!(
+        Quirks::default().display_wait,
+        DisplayWaitQuirk::WaitForFrame
+    );
+}
+
+fn two_draws_then_load() -> Vec<Instruction> {
+    looping(
+        START,
+        &[
+            load_index(0x300),
+            draw(V0, V0, 1),
+            draw(V0, V0, 1),
+            load(V5, 1),
+        ],
+    )
+}
+
+#[test]
+fn draw_blocks_until_the_next_tick_by_default() {
+    let mut c = cpu(&[(START, &two_draws_then_load())]);
+    c.memory.write(DATA, &[0x80]).unwrap();
+    run_cycles(&mut c).unwrap();
+    assert_eq!(lit(&c), [(0, 0)]);
+    assert_eq!(c.pc.get(), 0x204);
+
+    c.tick_timers();
+    c.step().unwrap();
+    assert_eq!(lit(&c), []);
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V5), 0);
+
+    c.tick_timers();
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V5), 1);
+}
+
+#[test]
+fn draw_does_not_block_with_the_draw_immediately_quirk() {
+    let mut c = cpu_with_quirks(&[(START, &two_draws_then_load())], draw_immediately());
+    c.memory.write(DATA, &[0x80]).unwrap();
+    run_cycles(&mut c).unwrap();
+    assert_eq!(lit(&c), []);
+    assert_eq!(c.get_register_value(V5), 1);
+}
+
+#[test]
+fn a_tick_while_running_does_not_skip_the_next_wait() {
+    let mut c = cpu(&[(START, &two_draws_then_load())]);
+    c.memory.write(DATA, &[0x80]).unwrap();
+    c.tick_timers();
+    run_cycles(&mut c).unwrap();
+    assert_eq!(lit(&c), [(0, 0)]);
 }

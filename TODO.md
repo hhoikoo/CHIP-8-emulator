@@ -88,7 +88,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Decide the clipping quirk: sprites crossing the edge are clipped (original) or wrap around
       - Configurable with `Quirks { clip: ClipQuirk }`, `Clip` by default; the start position always wraps
     - [x] Decide the display-wait quirk: `DXYN` waits for the next 60 Hz frame (original) or draws at once
-      - Deferred to Group 5, which brings the 60 Hz tick: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`. Until then `DXYN` draws at once
+      - Deferred to Group 5, which brings the 60 Hz tick: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`
     - [x] Decide how to bring in the GPL-3.0 Timendus test ROMs: commit them, download them in the test, or keep them untracked (`tests/roms/README.md`)
       - Committed unchanged in `tests/roms/timendus/` with their GPL-3.0 license, pinned to commit `742e9ea`
     - [x] Decide the golden-image format for framebuffer tests (e.g. 32 text lines of `#` and `.`)
@@ -98,7 +98,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Real-ROM test: `2-ibm-logo.ch8`, compare the framebuffer after 20 cycles
       - Needs: `1NNN` from Group 1
     - [x] Show the framebuffer in a window (see "Display" below)
-  - [ ] Group 5: timers
+  - [x] Group 5: timers
     - Needs: nothing
     - [x] Add an 8-bit delay timer and an 8-bit sound timer to `Cpu`
     - [x] Add a tick API (e.g. `Cpu::tick_timers()`) for a 60 Hz loop to call
@@ -106,7 +106,9 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] `FX07` `VX` = delay timer
     - [x] `FX15` delay timer = `VX`
     - [x] `FX18` sound timer = `VX`
-    - [ ] Add the display-wait quirk: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`; with `WaitForFrame`, `DXYN` waits for the next tick
+    - [x] Add the display-wait quirk: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`; with `WaitForFrame`, `DXYN` waits for the next tick
+      - `DXYN` draws, then the CPU idles until the next `tick_timers()`, so a program draws at most once per frame
+      - The Timendus golden tests use `DrawImmediately`, so their cycle budgets don't depend on frames
   - [ ] Group 6: random numbers
     - Needs: nothing
     - [ ] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)

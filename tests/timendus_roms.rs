@@ -1,6 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use chip8_emulator::{cpu::Cpu, rom::Rom};
+use chip8_emulator::{
+    cpu::{Cpu, DisplayWaitQuirk, Quirks},
+    rom::Rom,
+};
 
 struct TestRom {
     name: &'static str,
@@ -36,7 +39,11 @@ fn golden_path(rom: &TestRom) -> PathBuf {
 
 fn screen_after(rom: &TestRom, cycles: usize) -> String {
     let path = rom_dir().join("timendus").join(format!("{}.ch8", rom.name));
-    let mut cpu = Cpu::new(&Rom::from_file(&path).unwrap());
+    let quirks = Quirks {
+        display_wait: DisplayWaitQuirk::DrawImmediately,
+        ..Quirks::default()
+    };
+    let mut cpu = Cpu::with_quirks(&Rom::from_file(&path).unwrap(), quirks);
     cpu.run_for(cycles)
         .unwrap_or_else(|err| panic!("{}: {err}", rom.name));
     cpu.framebuffer().to_string()

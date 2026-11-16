@@ -22,7 +22,10 @@ struct Segment {
 
 impl Rom {
     pub fn new<T: Copy + Into<Opcode>>(segments: &[(usize, &[T])]) -> Result<Self, LoadError> {
-        let mut segments = Rom::parse_segments(segments)?;
+        Rom::from_segments(Rom::parse_segments(segments)?)
+    }
+
+    fn from_segments(mut segments: Vec<Segment>) -> Result<Self, LoadError> {
         segments.sort_unstable_by_key(|segment| segment.start);
 
         if let Some((first_start, second_start)) = Rom::find_overlapping_segments(&segments) {

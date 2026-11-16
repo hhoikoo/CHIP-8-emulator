@@ -23,7 +23,7 @@
 
 The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state they need. Work through one group at a time. Each opcode needs an `Instruction` variant, a decode arm, an encode arm, an `execute` arm plus handler, tests, and a row in the `README.md` table. A quirk is an instruction that behaves differently on the original COSMAC VIP interpreter and on later ones (CHIP-48, SUPER-CHIP); each needs a decision.
 
-- [ ] More opcodes
+- [x] More opcodes
   - [x] Group 1: no new state
     - Needs: nothing
     - Flow
@@ -127,7 +127,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - `VX > 0xF` in either is `CpuError::KeyOutOfRange`, like `FX29`
     - [x] `FX0A` wait for a key press and release, store it in `VX`
       - Needs a new press: a key already down when `FX0A` starts doesn't count until it's released and pressed again. `VX` gets the first key pressed, once that key is released
-  - [ ] Group 8: quirk settings and the remaining real-ROM tests
+  - [x] Group 8: quirk settings and the remaining real-ROM tests
     - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)
     - [x] Real-ROM test: `3-corax+.ch8` and corax89's `test_opcode.ch8` (all opcode checks)
       - `test_opcode.ch8` is in `tests/roms/corax89/` (MIT), pinned to commit `6a2cc38`: 18 `OK`s after 201 cycles

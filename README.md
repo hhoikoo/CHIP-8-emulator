@@ -6,7 +6,7 @@ Based on the CHIP-8 CPU emulator example in chapter 5 of *Rust in Action* by Tim
 
 ## Status
 
-Currently supported instructions:
+All 34 original CHIP-8 instructions are supported. `0NNN` (call a machine-code routine) is rejected as an unknown opcode. Each quirk defaults to the original COSMAC VIP behavior and can be switched through `Quirks`:
 
 | Opcode | Meaning |
 | --- | --- |
@@ -45,7 +45,7 @@ Currently supported instructions:
 | `FX55` | store `V0`–`VX` at `I`, then `I += X + 1` (quirk: `I` unchanged) |
 | `FX65` | load `V0`–`VX` from `I`, then `I += X + 1` (quirk: `I` unchanged) |
 
-The rest, and the planned assembler, are in [TODO.md](TODO.md).
+What's left, and the planned assembler, is in [TODO.md](TODO.md).
 
 ## Run
 

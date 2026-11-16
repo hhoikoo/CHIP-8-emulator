@@ -74,11 +74,12 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] `FX65` load `V0` to `VX` from memory starting at `I`
     - [x] Decide the memory quirk: `FX55`/`FX65` advance `I` (original) or leave it (CHIP-48, SUPER-CHIP)
       - Configurable with `Quirks { memory: MemoryQuirk }`, `AdvanceI` by default
-  - [ ] Group 3: font
+  - [x] Group 3: font
     - Needs: Group 2 (`FX29` sets `I`)
-    - [ ] Add the standard font: 16 hex digits (`0`–`F`), 5 bytes each
-    - [ ] Load it in `Cpu::new` at a `FONT_START` constant in the reserved area (commonly `0x050`)
-    - [ ] `FX29` `I` = address of the font sprite for digit `VX`
+    - [x] Add the standard font: 16 hex digits (`0`–`F`), 5 bytes each
+    - [x] Load it in `Cpu::new` at a `FONT_START` constant in the reserved area (commonly `0x050`)
+    - [x] `FX29` `I` = address of the font sprite for digit `VX`
+      - `VX > 0xF` is a `FontDigitOutOfRange` error instead of using the low nibble
   - [ ] Group 4: display
     - Needs: Group 2 (`DXYN` reads the sprite at `I`)
     - [ ] Add a 64×32 one-bit framebuffer to `Cpu`, with a read-only getter

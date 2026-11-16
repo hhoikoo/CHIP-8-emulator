@@ -25,6 +25,10 @@ pub enum CpuError {
         i: u16,
         len: usize,
     },
+    FontDigitOutOfRange {
+        pc: ProgramCounter,
+        value: u8,
+    },
 }
 
 impl Display for CpuError {
@@ -48,6 +52,10 @@ impl Display for CpuError {
             CpuError::IndexOutOfBounds { pc, i, len } => write!(
                 f,
                 "Memory access of {len} bytes at I = {i:#06x} (pc {pc:#06x}) runs past the end of memory"
+            ),
+            CpuError::FontDigitOutOfRange { pc, value } => write!(
+                f,
+                "No font sprite for {value:#04x} at pc {pc:#06x}; digits go up to 0x0f"
             ),
         }
     }

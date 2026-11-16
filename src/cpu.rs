@@ -8,6 +8,7 @@ pub use program_counter::ProgramCounter;
 pub use quirks::{JumpQuirk, LogicQuirk, MemoryQuirk, Quirks, ShiftQuirk};
 
 use crate::{
+    font::{FONT_START, GLYPHS},
     isa::{
         instruction::Instruction,
         opcode::Opcode,
@@ -37,6 +38,9 @@ impl Cpu {
 
     pub fn with_quirks(rom: &Rom, quirks: Quirks) -> Self {
         let mut memory = Memory::default();
+        memory
+            .write(usize::from(FONT_START), GLYPHS.as_flattened())
+            .expect("the font fits below the program start");
         rom.load_into_memory(&mut memory);
 
         Cpu {

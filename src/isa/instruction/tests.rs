@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 1 + 8 * 0x1000 + 11 * 0x100 + 4 * 0x10;
+const DECODABLE_OPCODE_COUNT: usize = 1 + 8 * 0x1000 + 11 * 0x100 + 5 * 0x10;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -73,6 +73,7 @@ fn decodes_each_instruction() {
     assert_eq!(decode(0xFA33), Ok(Instruction::StoreBcd { x: VA }));
     assert_eq!(decode(0xFA55), Ok(Instruction::StoreRegisters { x: VA }));
     assert_eq!(decode(0xFA65), Ok(Instruction::LoadRegisters { x: VA }));
+    assert_eq!(decode(0xFA29), Ok(Instruction::LoadFontCharacter { x: VA }));
 }
 
 #[test]
@@ -112,7 +113,7 @@ fn operand_extremes() {
 fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
         0x0000, 0x00E0, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
-        0xF000, 0xF01F, 0xF02E, 0xF0E1, 0xF034, 0xF056, 0xF066, 0xF053,
+        0xF000, 0xF01F, 0xF02E, 0xF0E1, 0xF034, 0xF056, 0xF066, 0xF053, 0xF028, 0xF030,
     ] {
         assert_eq!(
             decode(opcode),
@@ -144,7 +145,7 @@ fn only_the_known_suffixes_decode_in_the_8_family() {
 
 #[test]
 fn only_the_known_operations_decode_in_the_f_family() {
-    let known_operations = [0x1E, 0x33, 0x55, 0x65];
+    let known_operations = [0x1E, 0x29, 0x33, 0x55, 0x65];
     let decoded: Vec<u16> = (0xF000..=0xFFFF).filter(|&op| decode(op).is_ok()).collect();
     assert_eq!(decoded.len(), known_operations.len() * 0x10);
     assert!(
@@ -185,6 +186,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0xA000..=0xAFFF => Some(Instruction::LoadIndex { addr }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x1E => Some(Instruction::AddToIndex { x }),
+            0xF000..=0xFFFF if opcode & 0xFF == 0x29 => Some(Instruction::LoadFontCharacter { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x33 => Some(Instruction::StoreBcd { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x55 => Some(Instruction::StoreRegisters { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x65 => Some(Instruction::LoadRegisters { x }),
@@ -247,6 +249,7 @@ fn encodes_each_instruction() {
         (Instruction::StoreBcd { x: VA }, 0xFA33),
         (Instruction::StoreRegisters { x: VA }, 0xFA55),
         (Instruction::LoadRegisters { x: VA }, 0xFA65),
+        (Instruction::LoadFontCharacter { x: VA }, 0xFA29),
     ];
     for (instruction, opcode) in cases {
         assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");

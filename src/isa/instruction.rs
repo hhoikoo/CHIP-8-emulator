@@ -35,6 +35,7 @@ pub enum Instruction {
     StoreBcd { x: Register },
     StoreRegisters { x: Register },
     LoadRegisters { x: Register },
+    LoadFontCharacter { x: Register },
 }
 
 const RETURN: [Nibble; 4] = Opcode::new(0x00EE).nibbles();
@@ -64,6 +65,7 @@ const ADD_TO_INDEX: u8 = 0x1E;
 const STORE_BCD: u8 = 0x33;
 const STORE_REGISTERS: u8 = 0x55;
 const LOAD_REGISTERS: u8 = 0x65;
+const LOAD_FONT_CHARACTER: u8 = 0x29;
 
 impl TryFrom<Opcode> for Instruction {
     type Error = UnknownOpcodeError;
@@ -102,6 +104,7 @@ impl TryFrom<Opcode> for Instruction {
                 STORE_BCD => Ok(Self::StoreBcd { x }),
                 STORE_REGISTERS => Ok(Self::StoreRegisters { x }),
                 LOAD_REGISTERS => Ok(Self::LoadRegisters { x }),
+                LOAD_FONT_CHARACTER => Ok(Self::LoadFontCharacter { x }),
                 _ => Err(UnknownOpcodeError { opcode }),
             },
             _ => Err(UnknownOpcodeError { opcode }),
@@ -148,6 +151,7 @@ impl Instruction {
             Self::StoreBcd { x } => xnn(MISC, x, STORE_BCD),
             Self::StoreRegisters { x } => xnn(MISC, x, STORE_REGISTERS),
             Self::LoadRegisters { x } => xnn(MISC, x, LOAD_REGISTERS),
+            Self::LoadFontCharacter { x } => xnn(MISC, x, LOAD_FONT_CHARACTER),
         }
     }
 }

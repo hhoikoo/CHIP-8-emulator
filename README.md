@@ -31,6 +31,7 @@ Currently supported instructions:
 | `ANNN` | `I = NNN` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
 | `FX1E` | `I += VX` |
+| `FX29` | `I` = address of the font sprite for digit `VX` (`VX > 0xF` is an error) |
 | `FX33` | store `VX` as 3 decimal digits at `I`, `I+1`, `I+2` |
 | `FX55` | store `V0`–`VX` at `I`, then `I += X + 1` (quirk: `I` unchanged) |
 | `FX65` | load `V0`–`VX` from `I`, then `I += X + 1` (quirk: `I` unchanged) |

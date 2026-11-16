@@ -1,5 +1,6 @@
 use crate::{
     examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
+    font::{FONT_START, GLYPHS},
     isa::addr::Addr,
     memory::PROGRAM_START,
 };
@@ -366,6 +367,14 @@ fn error_messages() {
     assert_eq!(
         run_err(&[(START, &[call(0xFFE)]), (0xFFE, &[load(V0, 1)])]).to_string(),
         "Program counter 0x1000 out of bounds"
+    );
+    assert_eq!(
+        CpuError::FontDigitOutOfRange {
+            pc: ProgramCounter::new(0x204),
+            value: 0x10,
+        }
+        .to_string(),
+        "No font sprite for 0x10 at pc 0x0204; digits go up to 0x0f"
     );
     assert!(
         run_err(&[(START, &[call(0x200)])])
@@ -1080,4 +1089,53 @@ fn store_then_load_round_trips_the_registers() {
         Quirks::default(),
     );
     assert_eq!(c.registers.up_to(V2), &[0x11, 0x22, 0x33]);
+}
+
+#[test]
+fn new_cpu_has_the_font_at_the_font_start() {
+    let c = cpu(&[(START, &looping(START, &[]))]);
+    assert_eq!(
+        c.memory.read(usize::from(FONT_START), 80).unwrap(),
+        GLYPHS.as_flattened()
+    );
+    assert_eq!(
+        c.memory.read(0, usize::from(FONT_START)).unwrap(),
+        &[0; 0x50]
+    );
+}
+
+#[test]
+fn load_font_character_points_i_at_each_glyph() {
+    for digit in 0..=0xF {
+        let c = cpu_after(
+            &[load(V7, digit), LoadFontCharacter { x: V7 }],
+            &[],
+            Quirks::default(),
+        );
+        let start = 0x050 + 5 * usize::from(digit);
+        assert_eq!(usize::from(c.i), start, "digit {digit:x}");
+        assert_eq!(
+            c.memory.read(start, 5).unwrap(),
+            &GLYPHS[usize::from(digit)],
+            "digit {digit:x}"
+        );
+    }
+}
+
+#[test]
+fn load_font_character_leaves_the_registers_alone() {
+    let r = after(&[load(V7, 0xA), load(VF, 3), LoadFontCharacter { x: V7 }]);
+    assert_eq!(r[V7], 0xA);
+    assert_eq!(r[VF], 3);
+}
+
+#[test]
+fn load_font_character_past_0xf_is_font_digit_out_of_range() {
+    for value in [0x10, 0xFF] {
+        let err = run_err(&[(START, &[load(V7, value), LoadFontCharacter { x: V7 }])]);
+        assert!(
+            matches!(err, CpuError::FontDigitOutOfRange { pc, value: v } if pc.get() == 0x204 && v == value),
+            "{value:#x}"
+        );
+    }
 }

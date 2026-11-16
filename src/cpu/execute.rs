@@ -1,5 +1,8 @@
 use super::{Cpu, CpuError, JumpQuirk, LogicQuirk, MemoryQuirk, ProgramCounter, ShiftQuirk};
-use crate::isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register};
+use crate::{
+    font,
+    isa::{addr::Addr, instruction::Instruction, nibble::Nibble, register::Register},
+};
 
 impl Cpu {
     pub(super) fn execute(&mut self, instruction: Instruction) -> Result<(), CpuError> {
@@ -30,6 +33,7 @@ impl Cpu {
             Instruction::StoreBcd { x } => self.store_bcd(x)?,
             Instruction::StoreRegisters { x } => self.store_registers(x)?,
             Instruction::LoadRegisters { x } => self.load_registers(x)?,
+            Instruction::LoadFontCharacter { x } => self.load_font_character(x)?,
         }
         Ok(())
     }
@@ -212,6 +216,14 @@ impl Cpu {
             .ok_or_else(|| self.index_out_of_bounds(len))?;
         self.registers.up_to_mut(x).copy_from_slice(values);
         self.advance_index_past(x);
+        Ok(())
+    }
+
+    fn load_font_character(&mut self, x: Register) -> Result<(), CpuError> {
+        let value = self.registers[x];
+        let digit =
+            Nibble::new(value).map_err(|_| CpuError::FontDigitOutOfRange { pc: self.pc, value })?;
+        self.i = font::glyph_addr(digit);
         Ok(())
     }
 

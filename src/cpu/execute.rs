@@ -43,6 +43,7 @@ impl Cpu {
             Instruction::ReadDelayTimer { x } => self.registers[x] = self.delay_timer,
             Instruction::SetDelayTimer { x } => self.delay_timer = self.registers[x],
             Instruction::SetSoundTimer { x } => self.sound_timer = self.registers[x],
+            Instruction::LoadRandom { x, nn } => self.registers[x] = self.random.next_byte() & nn,
         }
         Ok(())
     }

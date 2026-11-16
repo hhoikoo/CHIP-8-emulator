@@ -7,7 +7,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use chip8_emulator::{
@@ -44,7 +44,7 @@ fn main() -> ExitCode {
 }
 
 fn run_rom_file(path: &Path) -> Result<(), Box<dyn Error>> {
-    let mut cpu = Cpu::new(&Rom::from_file(path)?);
+    let mut cpu = Cpu::new(&Rom::from_file(path)?).seeded(seed_from_clock());
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_from_handler = Arc::clone(&stop);
@@ -82,6 +82,14 @@ fn run_in_window(
         window.update_with_buffer(&pixels, WIDTH, HEIGHT)?;
     }
     Ok(())
+}
+
+fn seed_from_clock() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since_epoch| {
+            u64::try_from(since_epoch.as_nanos()).unwrap_or(u64::MAX)
+        })
 }
 
 fn paint(framebuffer: &Framebuffer, pixels: &mut [u32]) {

@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 2 + 9 * 0x1000 + 11 * 0x100 + 8 * 0x10;
+const DECODABLE_OPCODE_COUNT: usize = 2 + 10 * 0x1000 + 11 * 0x100 + 8 * 0x10;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -86,6 +86,10 @@ fn decodes_each_instruction() {
     assert_eq!(decode(0xFA07), Ok(Instruction::ReadDelayTimer { x: VA }));
     assert_eq!(decode(0xFA15), Ok(Instruction::SetDelayTimer { x: VA }));
     assert_eq!(decode(0xFA18), Ok(Instruction::SetSoundTimer { x: VA }));
+    assert_eq!(
+        decode(0xCA0F),
+        Ok(Instruction::LoadRandom { x: VA, nn: 0x0F })
+    );
 }
 
 #[test]
@@ -199,6 +203,7 @@ fn exhaustive_decode_matches_the_opcode_bits() {
             0x9000..=0x9FFF if opcode & 0xF == 0 => Some(Instruction::SkipIfNotEqual { x, y }),
             0xA000..=0xAFFF => Some(Instruction::LoadIndex { addr }),
             0xB000..=0xBFFF => Some(Instruction::JumpWithOffset { addr }),
+            0xC000..=0xCFFF => Some(Instruction::LoadRandom { x, nn }),
             0xD000..=0xDFFF => Some(Instruction::Draw {
                 x,
                 y,
@@ -284,6 +289,7 @@ fn encodes_each_instruction() {
         (Instruction::ReadDelayTimer { x: VA }, 0xFA07),
         (Instruction::SetDelayTimer { x: VA }, 0xFA15),
         (Instruction::SetSoundTimer { x: VA }, 0xFA18),
+        (Instruction::LoadRandom { x: VA, nn: 0x0F }, 0xCA0F),
     ];
     for (instruction, opcode) in cases {
         assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");

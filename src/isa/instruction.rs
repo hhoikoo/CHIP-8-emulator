@@ -41,6 +41,7 @@ pub enum Instruction {
     ReadDelayTimer { x: Register },
     SetDelayTimer { x: Register },
     SetSoundTimer { x: Register },
+    LoadRandom { x: Register, nn: u8 },
 }
 
 const CLEAR_SCREEN: [Nibble; 4] = Opcode::new(0x00E0).nibbles();
@@ -65,6 +66,7 @@ const SKIP_IF_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x3);
 const SKIP_IF_NOT_EQUAL_IMMEDIATE: Nibble = Nibble::expect_new(0x4);
 const SKIP_IF_EQUAL: Nibble = Nibble::expect_new(0x5);
 const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
+const LOAD_RANDOM: Nibble = Nibble::expect_new(0xC);
 const DRAW: Nibble = Nibble::expect_new(0xD);
 const MISC: Nibble = Nibble::expect_new(0xF);
 const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
@@ -110,6 +112,7 @@ impl TryFrom<Opcode> for Instruction {
             [SKIP_IF_NOT_EQUAL_IMMEDIATE, ..] => Ok(Self::SkipIfNotEqualImmediate { x, nn }),
             [SKIP_IF_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfEqual { x, y }),
             [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
+            [LOAD_RANDOM, ..] => Ok(Self::LoadRandom { x, nn }),
             [DRAW, ..] => Ok(Self::Draw { x, y, n }),
             [MISC, ..] => match nn {
                 ADD_TO_INDEX => Ok(Self::AddToIndex { x }),
@@ -172,6 +175,7 @@ impl Instruction {
             Self::ReadDelayTimer { x } => xnn(MISC, x, READ_DELAY_TIMER),
             Self::SetDelayTimer { x } => xnn(MISC, x, SET_DELAY_TIMER),
             Self::SetSoundTimer { x } => xnn(MISC, x, SET_SOUND_TIMER),
+            Self::LoadRandom { x, nn } => xnn(LOAD_RANDOM, x, nn),
         }
     }
 }

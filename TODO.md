@@ -109,12 +109,13 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Add the display-wait quirk: `DisplayWaitQuirk { WaitForFrame (default), DrawImmediately }`; with `WaitForFrame`, `DXYN` waits for the next tick
       - `DXYN` draws, then the CPU idles until the next `tick_timers()`, so a program draws at most once per frame
       - The Timendus golden tests use `DrawImmediately`, so their cycle budgets don't depend on frames
-  - [ ] Group 6: random numbers
+  - [x] Group 6: random numbers
     - Needs: nothing
     - [x] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)
       - Hand-written SplitMix64 in `src/random.rs`: as small as xorshift, but every seed (including 0) is valid, so it needs no error type
-    - [ ] Add the seedable source to `Cpu`, injectable so tests stay deterministic
-    - [ ] `CXNN` `VX` = random byte `& NN`
+    - [x] Add the seedable source to `Cpu`, injectable so tests stay deterministic
+      - Seeded with `DEFAULT_SEED` (0) unless `Cpu::seeded(seed)` picks another; the window seeds it from the clock
+    - [x] `CXNN` `VX` = random byte `& NN`
   - [ ] Group 7: keypad
     - Needs: nothing
     - [ ] Add state for 16 keys, with an API to press and release them

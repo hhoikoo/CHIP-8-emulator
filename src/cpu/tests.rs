@@ -1484,3 +1484,47 @@ fn a_tick_while_running_does_not_skip_the_next_wait() {
     run_cycles(&mut c).unwrap();
     assert_eq!(lit(&c), [(0, 0)]);
 }
+
+fn random_bytes(seed: u64, nn: u8) -> Vec<u8> {
+    let program: Vec<Instruction> = (0..8)
+        .map(|n| LoadRandom {
+            x: Register::try_from(n).unwrap(),
+            nn,
+        })
+        .collect();
+    let mut c = cpu(&[(START, &looping(START, &program))]).seeded(seed);
+    run_cycles(&mut c).unwrap();
+    c.registers.up_to(V7).to_vec()
+}
+
+#[test]
+fn load_random_takes_bytes_from_the_seeded_source() {
+    let mut random = Random::new(9);
+    let expected: Vec<u8> = (0..8).map(|_| random.next_byte()).collect();
+    assert_eq!(random_bytes(9, 0xFF), expected);
+}
+
+#[test]
+fn new_cpu_uses_the_default_seed() {
+    let mut c = cpu(&[(START, &looping(START, &[LoadRandom { x: V0, nn: 0xFF }]))]);
+    run_cycles(&mut c).unwrap();
+    assert_eq!(
+        c.get_register_value(V0),
+        Random::new(DEFAULT_SEED).next_byte()
+    );
+}
+
+#[test]
+fn load_random_masks_with_nn() {
+    let unmasked = random_bytes(3, 0xFF);
+    let masked = random_bytes(3, 0x0F);
+    assert!(masked.iter().all(|&byte| byte <= 0x0F));
+    let expected: Vec<u8> = unmasked.iter().map(|&byte| byte & 0x0F).collect();
+    assert_eq!(masked, expected);
+    assert_eq!(random_bytes(3, 0), [0; 8]);
+}
+
+#[test]
+fn different_seeds_load_different_bytes() {
+    assert_ne!(random_bytes(1, 0xFF), random_bytes(2, 0xFF));
+}

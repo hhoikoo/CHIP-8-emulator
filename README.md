@@ -31,6 +31,7 @@ Currently supported instructions:
 | `9XY0` | skip next if `VX != VY` |
 | `ANNN` | `I = NNN` |
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
+| `CXNN` | `VX` = random byte `& NN` |
 | `DXYN` | XOR-draw `N` sprite rows from `I` at `(VX, VY)`, `VF = 1` if a pixel turned off; clipped at the edges (quirk: wrap); then waits for the next 60 Hz frame (quirk: draw immediately) |
 | `FX07` | `VX` = delay timer |
 | `FX15` | delay timer = `VX` |

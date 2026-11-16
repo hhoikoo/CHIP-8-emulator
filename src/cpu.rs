@@ -18,10 +18,12 @@ use crate::{
         register::{Register, Registers},
     },
     memory::{Memory, PROGRAM_START},
+    random::Random,
     rom::Rom,
 };
 
 pub const STACK_SIZE: usize = 16;
+pub const DEFAULT_SEED: u64 = 0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -42,6 +44,7 @@ pub struct Cpu {
     delay_timer: u8,
     sound_timer: u8,
     state: State,
+    random: Random,
 }
 
 impl Cpu {
@@ -68,7 +71,13 @@ impl Cpu {
             delay_timer: 0,
             sound_timer: 0,
             state: State::Running,
+            random: Random::new(DEFAULT_SEED),
         }
+    }
+
+    pub fn seeded(mut self, seed: u64) -> Self {
+        self.random = Random::new(seed);
+        self
     }
 
     pub fn get_register_value(&self, register: Register) -> u8 {

@@ -111,7 +111,8 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - The Timendus golden tests use `DrawImmediately`, so their cycle budgets don't depend on frames
   - [ ] Group 6: random numbers
     - Needs: nothing
-    - [ ] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)
+    - [x] Decide the random source: the `rand` crate with a seed, or a small hand-written generator (e.g. xorshift)
+      - Hand-written SplitMix64 in `src/random.rs`: as small as xorshift, but every seed (including 0) is valid, so it needs no error type
     - [ ] Add the seedable source to `Cpu`, injectable so tests stay deterministic
     - [ ] `CXNN` `VX` = random byte `& NN`
   - [ ] Group 7: keypad

@@ -5,4 +5,5 @@ pub mod frame_clock;
 pub mod framebuffer;
 pub mod isa;
 pub mod memory;
+pub mod random;
 pub mod rom;

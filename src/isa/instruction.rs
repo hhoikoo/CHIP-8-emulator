@@ -42,6 +42,8 @@ pub enum Instruction {
     SetDelayTimer { x: Register },
     SetSoundTimer { x: Register },
     LoadRandom { x: Register, nn: u8 },
+    SkipIfKeyPressed { x: Register },
+    SkipIfKeyNotPressed { x: Register },
 }
 
 const CLEAR_SCREEN: [Nibble; 4] = Opcode::new(0x00E0).nibbles();
@@ -68,6 +70,9 @@ const SKIP_IF_EQUAL: Nibble = Nibble::expect_new(0x5);
 const SKIP_IF_NOT_EQUAL: Nibble = Nibble::expect_new(0x9);
 const LOAD_RANDOM: Nibble = Nibble::expect_new(0xC);
 const DRAW: Nibble = Nibble::expect_new(0xD);
+const KEY_OP: Nibble = Nibble::expect_new(0xE);
+const SKIP_IF_KEY_PRESSED: u8 = 0x9E;
+const SKIP_IF_KEY_NOT_PRESSED: u8 = 0xA1;
 const MISC: Nibble = Nibble::expect_new(0xF);
 const LAST_ZERO: Nibble = Nibble::expect_new(0x0);
 const ADD_TO_INDEX: u8 = 0x1E;
@@ -114,6 +119,11 @@ impl TryFrom<Opcode> for Instruction {
             [SKIP_IF_NOT_EQUAL, _, _, LAST_ZERO] => Ok(Self::SkipIfNotEqual { x, y }),
             [LOAD_RANDOM, ..] => Ok(Self::LoadRandom { x, nn }),
             [DRAW, ..] => Ok(Self::Draw { x, y, n }),
+            [KEY_OP, ..] => match nn {
+                SKIP_IF_KEY_PRESSED => Ok(Self::SkipIfKeyPressed { x }),
+                SKIP_IF_KEY_NOT_PRESSED => Ok(Self::SkipIfKeyNotPressed { x }),
+                _ => Err(UnknownOpcodeError { opcode }),
+            },
             [MISC, ..] => match nn {
                 ADD_TO_INDEX => Ok(Self::AddToIndex { x }),
                 STORE_BCD => Ok(Self::StoreBcd { x }),
@@ -176,6 +186,8 @@ impl Instruction {
             Self::SetDelayTimer { x } => xnn(MISC, x, SET_DELAY_TIMER),
             Self::SetSoundTimer { x } => xnn(MISC, x, SET_SOUND_TIMER),
             Self::LoadRandom { x, nn } => xnn(LOAD_RANDOM, x, nn),
+            Self::SkipIfKeyPressed { x } => xnn(KEY_OP, x, SKIP_IF_KEY_PRESSED),
+            Self::SkipIfKeyNotPressed { x } => xnn(KEY_OP, x, SKIP_IF_KEY_NOT_PRESSED),
         }
     }
 }

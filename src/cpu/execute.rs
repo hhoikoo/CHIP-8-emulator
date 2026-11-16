@@ -43,6 +43,8 @@ impl Cpu {
             Instruction::ReadDelayTimer { x } => self.registers[x] = self.delay_timer,
             Instruction::SetDelayTimer { x } => self.delay_timer = self.registers[x],
             Instruction::SetSoundTimer { x } => self.sound_timer = self.registers[x],
+            Instruction::SkipIfKeyPressed { x } => self.skip_if_key(x, true)?,
+            Instruction::SkipIfKeyNotPressed { x } => self.skip_if_key(x, false)?,
             Instruction::LoadRandom { x, nn } => self.registers[x] = self.random.next_byte() & nn,
         }
         Ok(())
@@ -199,6 +201,13 @@ impl Cpu {
         if skip {
             self.pc.advance();
         }
+    }
+
+    fn skip_if_key(&mut self, x: Register, pressed: bool) -> Result<(), CpuError> {
+        let value = self.registers[x];
+        let key = Nibble::new(value).map_err(|_| CpuError::KeyOutOfRange { pc: self.pc, value })?;
+        self.skip_if(self.keypad.is_pressed(key) == pressed);
+        Ok(())
     }
 
     fn store_bcd(&mut self, x: Register) -> Result<(), CpuError> {

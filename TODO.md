@@ -118,10 +118,12 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] `CXNN` `VX` = random byte `& NN`
   - [ ] Group 7: keypad
     - Needs: nothing
-    - [ ] Add state for 16 keys, with an API to press and release them
+    - [x] Add state for 16 keys, with an API to press and release them
+      - `Keypad` in `src/keypad.rs`; `Cpu::press_key`/`release_key` take a `Nibble`, so there is no key past `0xF`
     - [ ] Add a `CpuState` for waiting on a key press into `VX`
-    - [ ] `EX9E` skip next if key `VX` is pressed
-    - [ ] `EXA1` skip next if key `VX` is not pressed
+    - [x] `EX9E` skip next if key `VX` is pressed
+    - [x] `EXA1` skip next if key `VX` is not pressed
+      - `VX > 0xF` in either is `CpuError::KeyOutOfRange`, like `FX29`
     - [ ] `FX0A` wait for a key press and release, store it in `VX`
   - [ ] Group 8: quirk settings and the remaining real-ROM tests
     - [x] Decide whether to support more than one interpreter's quirks: yes, `Quirks` passed to `Cpu::with_quirks` (added in Group 1)

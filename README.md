@@ -33,6 +33,8 @@ Currently supported instructions:
 | `BNNN` | jump to `NNN + V0` (quirk: `XNN + VX`) |
 | `CXNN` | `VX` = random byte `& NN` |
 | `DXYN` | XOR-draw `N` sprite rows from `I` at `(VX, VY)`, `VF = 1` if a pixel turned off; clipped at the edges (quirk: wrap); then waits for the next 60 Hz frame (quirk: draw immediately) |
+| `EX9E` | skip next if key `VX` is down (`VX > 0xF` is an error) |
+| `EXA1` | skip next if key `VX` is up (`VX > 0xF` is an error) |
 | `FX07` | `VX` = delay timer |
 | `FX15` | delay timer = `VX` |
 | `FX18` | sound timer = `VX` |

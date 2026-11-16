@@ -1528,3 +1528,67 @@ fn load_random_masks_with_nn() {
 fn different_seeds_load_different_bytes() {
     assert_ne!(random_bytes(1, 0xFF), random_bytes(2, 0xFF));
 }
+
+fn key(value: u8) -> Nibble {
+    Nibble::new(value).unwrap()
+}
+
+fn key_skip_taken(skip: Instruction, held: &[u8]) -> bool {
+    let mut c = cpu(&[(START, &looping(START, &[load(V3, 0xA), skip, load(V0, 1)]))]);
+    for &k in held {
+        c.press_key(key(k));
+    }
+    run_cycles(&mut c).unwrap();
+    c.get_register_value(V0) == 0
+}
+
+#[test]
+fn skip_if_key_pressed_skips_only_while_key_vx_is_down() {
+    let skip = SkipIfKeyPressed { x: V3 };
+    assert!(key_skip_taken(skip, &[0xA]));
+    assert!(key_skip_taken(skip, &[0x1, 0xA]));
+    assert!(!key_skip_taken(skip, &[]));
+    assert!(!key_skip_taken(skip, &[0xB]));
+}
+
+#[test]
+fn skip_if_key_not_pressed_skips_only_while_key_vx_is_up() {
+    let skip = SkipIfKeyNotPressed { x: V3 };
+    assert!(!key_skip_taken(skip, &[0xA]));
+    assert!(key_skip_taken(skip, &[]));
+    assert!(key_skip_taken(skip, &[0xB]));
+}
+
+#[test]
+fn a_released_key_counts_as_up() {
+    let mut c = cpu(&[(
+        START,
+        &looping(
+            START,
+            &[load(V3, 0xA), SkipIfKeyPressed { x: V3 }, load(V0, 1)],
+        ),
+    )]);
+    c.press_key(key(0xA));
+    c.release_key(key(0xA));
+    run_cycles(&mut c).unwrap();
+    assert_eq!(c.get_register_value(V0), 1);
+}
+
+#[test]
+fn key_skips_past_0xf_are_key_out_of_range() {
+    for skip in [SkipIfKeyPressed { x: V3 }, SkipIfKeyNotPressed { x: V3 }] {
+        let err = run_err(&[(START, &looping(START, &[load(V3, 0x10), skip]))]);
+        assert!(
+            matches!(err, CpuError::KeyOutOfRange { pc, value: 0x10 } if pc.get() == 0x204),
+            "{err:?}"
+        );
+    }
+    assert_eq!(
+        CpuError::KeyOutOfRange {
+            pc: ProgramCounter::new(0x204),
+            value: 0x10,
+        }
+        .to_string(),
+        "No key 0x10 at pc 0x0204; keys go up to 0x0f"
+    );
+}

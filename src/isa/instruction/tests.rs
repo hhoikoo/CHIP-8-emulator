@@ -1,7 +1,7 @@
 use super::*;
 use Register::*;
 
-const DECODABLE_OPCODE_COUNT: usize = 2 + 10 * 0x1000 + 11 * 0x100 + 8 * 0x10;
+const DECODABLE_OPCODE_COUNT: usize = 2 + 10 * 0x1000 + 11 * 0x100 + 10 * 0x10;
 
 fn decode(opcode: u16) -> Result<Instruction, UnknownOpcodeError> {
     Instruction::try_from(Opcode::new(opcode))
@@ -90,6 +90,11 @@ fn decodes_each_instruction() {
         decode(0xCA0F),
         Ok(Instruction::LoadRandom { x: VA, nn: 0x0F })
     );
+    assert_eq!(decode(0xEA9E), Ok(Instruction::SkipIfKeyPressed { x: VA }));
+    assert_eq!(
+        decode(0xEAA1),
+        Ok(Instruction::SkipIfKeyNotPressed { x: VA })
+    );
 }
 
 #[test]
@@ -130,7 +135,7 @@ fn unrecognized_opcodes_are_errors_carrying_the_opcode() {
     for opcode in [
         0x0000, 0x00E1, 0x0001, 0x0123, 0x5121, 0x512F, 0x9121, 0x912F, 0x8128, 0x812D, 0x812F,
         0xF000, 0xF01F, 0xF02E, 0xF0E1, 0xF034, 0xF056, 0xF066, 0xF053, 0xF028, 0xF030, 0xF008,
-        0xF017, 0xF014, 0xF019, 0xF016,
+        0xF017, 0xF014, 0xF019, 0xF016, 0xE000, 0xE09F, 0xE09D, 0xE0A0, 0xE0A2, 0xE01E,
     ] {
         assert_eq!(
             decode(opcode),
@@ -157,6 +162,18 @@ fn only_the_known_suffixes_decode_in_the_8_family() {
         decoded
             .iter()
             .all(|op| known_suffixes.contains(&(op & 0xF)))
+    );
+}
+
+#[test]
+fn only_the_known_operations_decode_in_the_e_family() {
+    let known_operations = [0x9E, 0xA1];
+    let decoded: Vec<u16> = (0xE000..=0xEFFF).filter(|&op| decode(op).is_ok()).collect();
+    assert_eq!(decoded.len(), known_operations.len() * 0x10);
+    assert!(
+        decoded
+            .iter()
+            .all(|op| known_operations.contains(&(op & 0xFF)))
     );
 }
 
@@ -209,6 +226,10 @@ fn exhaustive_decode_matches_the_opcode_bits() {
                 y,
                 n: Nibble::new((opcode & 0xF) as u8).unwrap(),
             }),
+            0xE000..=0xEFFF if opcode & 0xFF == 0x9E => Some(Instruction::SkipIfKeyPressed { x }),
+            0xE000..=0xEFFF if opcode & 0xFF == 0xA1 => {
+                Some(Instruction::SkipIfKeyNotPressed { x })
+            }
             0xF000..=0xFFFF if opcode & 0xFF == 0x07 => Some(Instruction::ReadDelayTimer { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x15 => Some(Instruction::SetDelayTimer { x }),
             0xF000..=0xFFFF if opcode & 0xFF == 0x18 => Some(Instruction::SetSoundTimer { x }),
@@ -290,6 +311,8 @@ fn encodes_each_instruction() {
         (Instruction::SetDelayTimer { x: VA }, 0xFA15),
         (Instruction::SetSoundTimer { x: VA }, 0xFA18),
         (Instruction::LoadRandom { x: VA, nn: 0x0F }, 0xCA0F),
+        (Instruction::SkipIfKeyPressed { x: VA }, 0xEA9E),
+        (Instruction::SkipIfKeyNotPressed { x: VA }, 0xEAA1),
     ];
     for (instruction, opcode) in cases {
         assert_eq!(instruction.encode(), Opcode::new(opcode), "{instruction:?}");

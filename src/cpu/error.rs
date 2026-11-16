@@ -29,6 +29,10 @@ pub enum CpuError {
         pc: ProgramCounter,
         value: u8,
     },
+    KeyOutOfRange {
+        pc: ProgramCounter,
+        value: u8,
+    },
 }
 
 impl Display for CpuError {
@@ -57,6 +61,9 @@ impl Display for CpuError {
                 f,
                 "No font sprite for {value:#04x} at pc {pc:#06x}; digits go up to 0x0f"
             ),
+            CpuError::KeyOutOfRange { pc, value } => {
+                write!(f, "No key {value:#04x} at pc {pc:#06x}; keys go up to 0x0f")
+            }
         }
     }
 }

@@ -14,9 +14,11 @@ use crate::{
     framebuffer::Framebuffer,
     isa::{
         instruction::Instruction,
+        nibble::Nibble,
         opcode::Opcode,
         register::{Register, Registers},
     },
+    keypad::Keypad,
     memory::{Memory, PROGRAM_START},
     random::Random,
     rom::Rom,
@@ -45,6 +47,7 @@ pub struct Cpu {
     sound_timer: u8,
     state: State,
     random: Random,
+    keypad: Keypad,
 }
 
 impl Cpu {
@@ -72,6 +75,7 @@ impl Cpu {
             sound_timer: 0,
             state: State::Running,
             random: Random::new(DEFAULT_SEED),
+            keypad: Keypad::default(),
         }
     }
 
@@ -86,6 +90,14 @@ impl Cpu {
 
     pub fn framebuffer(&self) -> &Framebuffer {
         &self.framebuffer
+    }
+
+    pub fn press_key(&mut self, key: Nibble) {
+        self.keypad.press(key);
+    }
+
+    pub fn release_key(&mut self, key: Nibble) {
+        self.keypad.release(key);
     }
 
     pub fn sound_active(&self) -> bool {

@@ -7,17 +7,27 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    time::{Duration, Instant},
 };
 
 use chip8_emulator::{
     cpu::Cpu,
     examples::{FN_ADD_TWICE_ADDR, fn_add_twice, fn_main},
+    frame_clock::FrameClock,
+    framebuffer::{Framebuffer, HEIGHT, WIDTH},
     isa::register::Register,
     memory::PROGRAM_START,
     rom::Rom,
 };
 
+use minifb::{Key, Scale, Window, WindowOptions};
+
 const DEMO_CYCLE_BUDGET: usize = 100;
+const FRAME_PERIOD: Duration = Duration::from_nanos(1_000_000_000 / 60);
+const INSTRUCTIONS_PER_FRAME: usize = 12;
+const MAX_CATCH_UP_FRAMES: u32 = 5;
+const LIT: u32 = 0x00E8_E8E8;
+const DARK: u32 = 0x0018_1818;
 
 fn main() -> ExitCode {
     let result = match env::args_os().nth(1) {
@@ -40,9 +50,43 @@ fn run_rom_file(path: &Path) -> Result<(), Box<dyn Error>> {
     let stop_from_handler = Arc::clone(&stop);
     ctrlc::set_handler(move || stop_from_handler.store(true, Ordering::Relaxed))?;
 
-    let outcome = cpu.run(|| stop.load(Ordering::Relaxed));
+    let mut window = Window::new(
+        &format!("CHIP-8: {}", path.display()),
+        WIDTH,
+        HEIGHT,
+        WindowOptions {
+            scale: Scale::X16,
+            ..WindowOptions::default()
+        },
+    )?;
+
+    let outcome = run_in_window(&mut cpu, &mut window, &stop);
     print_registers(&cpu)?;
-    Ok(outcome?)
+    outcome
+}
+
+fn run_in_window(
+    cpu: &mut Cpu,
+    window: &mut Window,
+    stop: &AtomicBool,
+) -> Result<(), Box<dyn Error>> {
+    let mut clock = FrameClock::new(FRAME_PERIOD, MAX_CATCH_UP_FRAMES, Instant::now());
+    let mut pixels = vec![DARK; WIDTH * HEIGHT];
+
+    while window.is_open() && !window.is_key_down(Key::Escape) && !stop.load(Ordering::Relaxed) {
+        for _ in 0..clock.frames_due(Instant::now()) {
+            cpu.run_for(INSTRUCTIONS_PER_FRAME)?;
+        }
+        paint(cpu.framebuffer(), &mut pixels);
+        window.update_with_buffer(&pixels, WIDTH, HEIGHT)?;
+    }
+    Ok(())
+}
+
+fn paint(framebuffer: &Framebuffer, pixels: &mut [u32]) {
+    for (pixel, &lit) in pixels.iter_mut().zip(framebuffer.rows().flatten()) {
+        *pixel = if lit { LIT } else { DARK };
+    }
 }
 
 fn print_registers(cpu: &Cpu) -> Result<(), Box<dyn Error>> {

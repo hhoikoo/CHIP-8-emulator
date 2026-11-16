@@ -45,8 +45,12 @@ The rest, and the planned assembler, are in [TODO.md](TODO.md).
 ### Emulator
 
 ```sh
-cargo run
+cargo run -- tests/roms/timendus/2-ibm-logo.ch8
 ```
+
+This opens a window that shows the screen at ×16 and runs 12 instructions per 60 Hz frame. Close it with Escape, the close button or Ctrl-C. It prints the registers when it stops, plus the error if the ROM failed.
+
+`cargo run` with no ROM runs a small built-in demo without a window and prints `5 + (2 * 10) + (2 * 10) = 45`.
 
 ### Assembler
 
@@ -64,4 +68,4 @@ The first `cargo test` installs a pre-commit hook (via [husky-rs](https://crates
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The test ROMs in `tests/roms/timendus/` are GPL-3.0 (see [`tests/roms/README.md`](tests/roms/README.md)).

@@ -80,7 +80,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
     - [x] Load it in `Cpu::new` at a `FONT_START` constant in the reserved area (commonly `0x050`)
     - [x] `FX29` `I` = address of the font sprite for digit `VX`
       - `VX > 0xF` is a `FontDigitOutOfRange` error instead of using the low nibble
-  - [ ] Group 4: display
+  - [x] Group 4: display
     - Needs: Group 2 (`DXYN` reads the sprite at `I`)
     - [x] Add a 64×32 one-bit framebuffer to `Cpu`, with a read-only getter
     - [x] `00E0` clear the screen
@@ -97,7 +97,7 @@ The original CHIP-8 has 34 opcodes (plus `0NNN`), grouped here by the CPU state 
       - Needs: `1NNN` from Group 1
     - [x] Real-ROM test: `2-ibm-logo.ch8`, compare the framebuffer after 20 cycles
       - Needs: `1NNN` from Group 1
-    - [ ] Show the framebuffer in a window (see "Display" below)
+    - [x] Show the framebuffer in a window (see "Display" below)
   - [ ] Group 5: timers
     - Needs: nothing
     - [ ] Add an 8-bit delay timer and an 8-bit sound timer to `Cpu`
@@ -134,12 +134,15 @@ Work on this alongside the opcode groups: each item says which group it needs, s
 
 - [ ] Display support (goal: play Pong)
   - [x] Choose the frontend library: `minifb` (no system library, a simple window + pixel buffer + key state API; `sdl2` was the alternative)
-  - [ ] Add the frontend: a window that draws the framebuffer scaled up (e.g. ×10); it only reads the framebuffer, so the core stays frontend-agnostic
+  - [x] Add the frontend: a window that draws the framebuffer scaled up (e.g. ×10); it only reads the framebuffer, so the core stays frontend-agnostic
+    - `minifb` at ×16 in `src/main.rs`; Escape, closing the window or Ctrl-C stops it
     - Needs: Group 4 (framebuffer, `00E0`, `DXYN`)
-    - First milestone: see the IBM logo (`2-ibm-logo.ch8`) on screen
-  - [ ] Run the CPU at a steady speed: a fixed number of instructions per 60 Hz frame
-    - [ ] Decide the instructions per frame (about 10–15, i.e. roughly 600–900 per second, is typical)
-    - [ ] Use a fixed-timestep clock, so a 120 Hz (ProMotion) display still runs the emulator at 60 Hz
+    - [x] First milestone: see the IBM logo (`2-ibm-logo.ch8`) on screen
+  - [x] Run the CPU at a steady speed: a fixed number of instructions per 60 Hz frame
+    - [x] Decide the instructions per frame (about 10–15, i.e. roughly 600–900 per second, is typical)
+      - 12 (`INSTRUCTIONS_PER_FRAME`, 720 per second); revisit once Pong runs
+    - [x] Use a fixed-timestep clock, so a 120 Hz (ProMotion) display still runs the emulator at 60 Hz
+      - `FrameClock` in `src/frame_clock.rs`; after a stall it runs at most 5 frames and drops the rest
     - Needs: the window above, and the halt removal in Group 1 (the frame loop calls `run_for` each frame)
   - [ ] Tick the delay and sound timers once per frame
     - Needs: Group 5 and the frame loop
